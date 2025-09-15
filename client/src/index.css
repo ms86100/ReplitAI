@@ -6,6 +6,12 @@
 All colors MUST be HSL.
 */
 
+@layer utilities {
+  .bg-surface-alt {
+    background-color: hsl(var(--surface-alt));
+  }
+}
+
 @layer base {
   :root {
     /* Airbus Design System - Light Mode */
@@ -193,15 +199,16 @@ All colors MUST be HSL.
   }
   
   ::-webkit-scrollbar-track {
-    @apply bg-surface-alt;
+    background-color: hsl(var(--surface-alt));
   }
   
   ::-webkit-scrollbar-thumb {
-    @apply bg-brand-primary/30 rounded-full;
+    background-color: hsl(var(--brand-primary) / 0.30);
+    border-radius: 9999px;
   }
   
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-brand-primary/50;
+    background-color: hsl(var(--brand-primary) / 0.50);
   }
   
   /* Typography Enhancement */
