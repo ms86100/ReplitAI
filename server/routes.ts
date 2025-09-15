@@ -149,6 +149,108 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Airbus Application API Endpoints
+  
+  // Auth service - Get user profile
+  app.get("/api/auth-service/users/:userId/profile", async (req, res) => {
+    try {
+      // For now, return a basic profile response
+      res.json({
+        success: true,
+        data: {
+          id: req.params.userId,
+          email: "ms861000@gmail.com",
+          full_name: "Project Manager",
+          department_id: "dept-1",
+          departments: {
+            name: "Engineering"
+          }
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to get user profile" 
+      });
+    }
+  });
+
+  // Auth service - Get user role
+  app.get("/api/auth-service/users/:userId/role", async (req, res) => {
+    try {
+      res.json({
+        success: true,
+        data: {
+          role: "admin"
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to get user role" 
+      });
+    }
+  });
+
+  // Projects service - Get all projects
+  app.get("/api/projects-service/projects", async (req, res) => {
+    try {
+      // Return some sample projects for now
+      res.json({
+        success: true,
+        data: [
+          {
+            id: "proj-1",
+            name: "Airbus A350 Engine Optimization",
+            description: "Optimize engine performance for next generation aircraft",
+            status: "active",
+            priority: "high",
+            start_date: "2024-01-15",
+            end_date: "2024-12-31",
+            created_by: req.params.userId || "user-1",
+            created_at: "2024-01-15T00:00:00Z"
+          },
+          {
+            id: "proj-2", 
+            name: "Flight Management System Upgrade",
+            description: "Modernize flight management system software",
+            status: "planning",
+            priority: "medium",
+            start_date: "2024-03-01",
+            end_date: "2024-11-30",
+            created_by: req.params.userId || "user-1",
+            created_at: "2024-02-01T00:00:00Z"
+          }
+        ]
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to get projects" 
+      });
+    }
+  });
+
+  // Projects service - Get project stats
+  app.get("/api/projects-service/stats", async (req, res) => {
+    try {
+      res.json({
+        success: true,
+        data: {
+          totalProjects: 2,
+          activeProjects: 1,
+          completedProjects: 0,
+          totalUsers: 1
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to get project stats" 
+      });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

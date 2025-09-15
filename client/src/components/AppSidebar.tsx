@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { Home, FolderOpen, Users, Settings, Plane, BarChart3, Calendar, Bell, RotateCcw, Shield, Map, Kanban, MessageSquare, Archive, AlertTriangle, Activity, ArrowLeft } from "lucide-react"
-import { NavLink, useLocation, useNavigate } from "react-router-dom"
+import { useLocation, Link } from "wouter"
 import { useProjectContext } from "@/hooks/useProjectContext"
 import { Button } from "@/components/ui/button"
 
@@ -47,11 +47,10 @@ const settings = [
 
 export function AppSidebar() {
   const { state } = useSidebar()
-  const location = useLocation()
-  const currentPath = location.pathname
+  const [currentPath] = useLocation()
   const isCollapsed = state === "collapsed"
   const { selectedProjectId, isProjectSelected } = useProjectContext()
-  const navigate = useNavigate()
+  const [, setLocation] = useLocation()
   
   const navigation = isProjectSelected && selectedProjectId 
     ? getProjectNavigation(selectedProjectId) 
@@ -93,7 +92,7 @@ export function AppSidebar() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => navigate('/projects')}
+              onClick={() => setLocation('/projects')}
               className="w-full justify-start gap-2 text-text-muted hover:text-text-primary"
             >
               <ArrowLeft className="h-4 w-4" />
@@ -111,14 +110,13 @@ export function AppSidebar() {
               {navigation.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
-                    <NavLink 
-                      to={item.url} 
-                      end={item.url === '/'}
+                    <Link 
+                      href={item.url} 
                       className={`${getNavCls(item.url)} flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors`}
                     >
                       <item.icon className="h-5 w-5 flex-shrink-0" />
                       {!isCollapsed && <span>{item.title}</span>}
-                    </NavLink>
+                    </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
@@ -135,13 +133,13 @@ export function AppSidebar() {
               {settings.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
-                    <NavLink 
-                      to={item.url} 
+                    <Link 
+                      href={item.url} 
                       className={`${getNavCls(item.url)} flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors`}
                     >
                       <item.icon className="h-5 w-5 flex-shrink-0" />
                       {!isCollapsed && <span>{item.title}</span>}
-                    </NavLink>
+                    </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}

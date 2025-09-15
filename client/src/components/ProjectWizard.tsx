@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation } from 'wouter';
 import { useApiAuth } from '@/hooks/useApiAuth';
 import { apiClient } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
@@ -49,7 +49,7 @@ export interface ProjectData {
 const ProjectWizard = () => {
   const { user } = useApiAuth();
   const { toast } = useToast();
-  const navigate = useNavigate();
+  const [, setLocation] = useLocation();
 
   const [currentStep, setCurrentStep] = useState(0);
   const [isCreating, setIsCreating] = useState(false);
@@ -164,7 +164,7 @@ const ProjectWizard = () => {
       <div className="max-w-6xl mx-auto p-lg space-y-xl bg-gradient-to-br from-surface-default to-surface-alt min-h-screen overflow-visible">
         {/* Cancel Button */}
         <div className="flex justify-end">
-          <Button variant="outline" onClick={() => navigate('/')}>
+          <Button variant="outline" onClick={() => setLocation('/')}>
             Cancel
           </Button>
         </div>
@@ -250,15 +250,15 @@ const ProjectWizard = () => {
         body="Your project has been created. What would you like to do next?"
         onProjectOverview={() => {
           setShowSuccessModal(false);
-          navigate(`/project/${createdProjectId}`);
+          setLocation(`/project/${createdProjectId}`);
         }}
         onHomepage={() => {
           setShowSuccessModal(false);
-          navigate('/');
+          setLocation('/');
         }}
         onClose={() => {
           setShowSuccessModal(false);
-          navigate('/');
+          setLocation('/');
         }}
       />
     </>

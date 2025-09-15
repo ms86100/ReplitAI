@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'wouter';
+import { useLocation } from 'wouter';
 import { useApiAuth } from '@/hooks/useApiAuth';
 import { apiClient } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
@@ -70,7 +71,7 @@ interface Task {
 
 const ProjectOverview = () => {
   const { id } = useParams();
-  const navigate = useNavigate();
+  const [, setLocation] = useLocation();
   const { user } = useApiAuth();
   const { toast } = useToast();
   const { canRead } = useModulePermissions(id || '');
@@ -140,7 +141,7 @@ const ProjectOverview = () => {
         title: "Project Deleted",
         description: "The project has been permanently deleted.",
       });
-      navigate('/');
+      setLocation('/');
     } catch (error) {
       console.error('Error deleting project:', error);
       toast({
@@ -196,14 +197,14 @@ const ProjectOverview = () => {
           <div className="bg-card border border-border rounded-lg shadow-sm p-6">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
               <div className="flex items-center gap-4">
-                <Button variant="ghost" onClick={() => navigate('/projects')} className="shrink-0">
+                <Button variant="ghost" onClick={() => setLocation('/projects')} className="shrink-0">
                   <ArrowLeft className="h-4 w-4 mr-2" />
                   Back to Projects
                 </Button>
               </div>
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
                 <Button
-                  onClick={() => navigate(`/project/${id}/roadmap`)}
+                  onClick={() => setLocation(`/project/${id}/roadmap`)}
                   className="w-full sm:w-auto"
                 >
                   <Calendar className="h-4 w-4 mr-2" />
@@ -211,7 +212,7 @@ const ProjectOverview = () => {
                 </Button>
                 <Button
                   variant="outline"
-                  onClick={() => navigate(`/project/${id}/edit`)}
+                  onClick={() => setLocation(`/project/${id}/edit`)}
                   className="w-full sm:w-auto"
                 >
                   <Edit3 className="h-4 w-4 mr-2" />

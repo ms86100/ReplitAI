@@ -1,19 +1,19 @@
 import React from 'react';
 import { useApiAuth } from '@/hooks/useApiAuth';
-import { useNavigate } from 'react-router-dom';
+import { useLocation } from 'wouter';
 import { useEffect } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
 import ProjectsList from '@/components/ProjectsList';
 
 const Projects = () => {
   const { user, loading } = useApiAuth();
-  const navigate = useNavigate();
+  const [, setLocation] = useLocation();
 
   useEffect(() => {
     if (!loading && !user) {
-      navigate('/auth');
+      setLocation('/auth');
     }
-  }, [user, loading, navigate]);
+  }, [user, loading, setLocation]);
 
   if (loading) {
     return (

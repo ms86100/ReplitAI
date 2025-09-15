@@ -1,5 +1,6 @@
 import React from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'wouter';
+import { useLocation } from 'wouter';
 import { useApiAuth } from '@/hooks/useApiAuth';
 import { useEffect } from 'react';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
@@ -13,13 +14,13 @@ import { User, LogOut, Settings } from 'lucide-react';
 const ProjectWorkspace = () => {
   const { id: projectId, module = 'roadmap' } = useParams();
   const { user, loading } = useApiAuth();
-  const navigate = useNavigate();
+  const [, setLocation] = useLocation();
 
   useEffect(() => {
     if (!loading && !user) {
-      navigate('/auth');
+      setLocation('/auth');
     }
-  }, [user, loading, navigate]);
+  }, [user, loading, setLocation]);
 
   if (loading) {
     return (

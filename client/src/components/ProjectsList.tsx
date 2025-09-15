@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation } from 'wouter';
 import { useApiAuth } from '@/hooks/useApiAuth';
 import { apiClient } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
@@ -37,7 +37,7 @@ interface ProjectFormData {
 }
 
 const ProjectsList = () => {
-  const navigate = useNavigate();
+  const [, setLocation] = useLocation();
   const { user } = useApiAuth();
   const { toast } = useToast();
   
@@ -330,7 +330,7 @@ const ProjectsList = () => {
           <div className="text-sm text-muted-foreground">
             Latest projects in the system
           </div>
-          <Button variant="outline" onClick={() => navigate('/projects')}>
+          <Button variant="outline" onClick={() => setLocation('/projects')}>
             View All Projects
           </Button>
         </div>
@@ -360,7 +360,7 @@ const ProjectsList = () => {
                 <div className="flex items-start justify-between">
                   <CardTitle 
                     className="text-lg font-semibold truncate cursor-pointer hover:text-brand-primary"
-                    onClick={() => navigate(`/project/${project.id}`)}
+                    onClick={() => setLocation(`/project/${project.id}`)}
                   >
                     {project.name}
                   </CardTitle>
