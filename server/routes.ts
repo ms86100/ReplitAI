@@ -7,7 +7,11 @@ import { storage } from "./storage";
 import { BackupAnalyzer } from "./services/backup-analyzer";
 import { DatabaseRestorer } from "./services/database-restorer";
 import { DatabaseVerifier } from "./services/verification";
-import { insertMigrationJobSchema } from "@shared/schema";
+import { insertMigrationJobSchema, projects, insertProjectSchema } from "@shared/schema";
+import { neon } from '@neondatabase/serverless';
+import { drizzle } from 'drizzle-orm/neon-http';
+import * as schema from '../shared/schema';
+import { eq } from 'drizzle-orm';
 
 const upload = multer({ 
   dest: 'uploads/',
@@ -18,8 +22,8 @@ const backupAnalyzer = new BackupAnalyzer();
 const databaseRestorer = new DatabaseRestorer();
 const databaseVerifier = new DatabaseVerifier();
 
-// In-memory storage for created projects
-const createdProjects: Map<string, any> = new Map();
+const sql = neon(process.env.DATABASE_URL!);
+const db = drizzle(sql, { schema });
 
 export async function registerRoutes(app: Express): Promise<Server> {
   
@@ -198,35 +202,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Projects service - Get all projects
   app.get("/api/projects-service/projects", async (req, res) => {
     try {
-      // Base sample projects
-      const baseProjects = [
-        {
-          id: "proj-1",
-          name: "Airbus A350 Engine Optimization",
-          description: "Optimize engine performance for next generation aircraft",
-          status: "active",
-          priority: "high",
-          start_date: "2024-01-15",
-          end_date: "2024-12-31",
-          created_by: "user-1",
-          created_at: "2024-01-15T00:00:00Z"
-        },
-        {
-          id: "proj-2", 
-          name: "Flight Management System Upgrade",
-          description: "Modernize flight management system software",
-          status: "planning",
-          priority: "medium",
-          start_date: "2024-03-01",
-          end_date: "2024-11-30",
-          created_by: "user-1",
-          created_at: "2024-02-01T00:00:00Z"
-        }
-      ];
-      
-      // Add created projects from memory
-      const allProjects = [...baseProjects, ...Array.from(createdProjects.values())];
-      
+      const allProjects = await db.select().from(projects);
       res.json({
         success: true,
         data: allProjects
@@ -244,59 +220,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const projectId = req.params.id;
       
-      // Check if it's a created project first
-      if (createdProjects.has(projectId)) {
-        res.json({
-          success: true,
-          data: createdProjects.get(projectId)
-        });
-        return;
-      }
+      const project = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
       
-      // Return project details based on ID for hardcoded projects
-      const projects = {
-        "proj-1": {
-          id: "proj-1",
-          name: "Airbus A350 Engine Optimization",
-          description: "Optimize engine performance for next generation aircraft",
-          status: "active",
-          priority: "high",
-          start_date: "2024-01-15",
-          end_date: "2024-12-31",
-          created_by: "user-1",
-          created_at: "2024-01-15T00:00:00Z",
-          department_id: "dept-1"
-        },
-        "proj-2": {
-          id: "proj-2", 
-          name: "Flight Management System Upgrade",
-          description: "Modernize flight management system software",
-          status: "planning",
-          priority: "medium",
-          start_date: "2024-03-01",
-          end_date: "2024-11-30",
-          created_by: "user-1",
-          created_at: "2024-02-01T00:00:00Z",
-          department_id: "dept-2"
-        }
-      };
-
-      const project = projects[projectId as keyof typeof projects];
-      if (!project) {
+      if (project.length === 0) {
         return res.status(404).json({
           success: false,
           error: "Project not found"
         });
       }
-
+      
       res.json({
         success: true,
-        data: project
+        data: project[0]
       });
     } catch (error) {
       res.status(500).json({ 
         success: false,
-        error: error instanceof Error ? error.message : "Failed to get project" 
+        error: error instanceof Error ? error.message : "Failed to fetch project" 
       });
     }
   });
@@ -473,29 +413,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Wizard service - Create project
   app.post("/api/wizard-service/projects/create", async (req, res) => {
     try {
-      const newProjectId = `proj-${Date.now()}`;
-      const newProject = {
-        id: newProjectId,
+      const newProject = await db.insert(projects).values({
         name: req.body.projectName || 'New Project',
         description: req.body.objective || '',
-        status: "active",
+        status: "planning",
         priority: "medium",
         start_date: req.body.startDate || new Date().toISOString().split('T')[0],
         end_date: req.body.endDate || new Date(Date.now() + 365*24*60*60*1000).toISOString().split('T')[0],
-        created_by: "6dc39f1e-2af3-4b78-8488-317d90f4f538", // Current user ID
-        created_at: new Date().toISOString(),
-        department_id: "dept-1"
-      };
-      
-      // Store in memory
-      createdProjects.set(newProjectId, newProject);
+        created_by: "6dc39f1e-2af3-4b78-8488-317d90f4f538",
+        department_id: "3af3b0f4-adca-4f11-826c-20ed36b31d46"
+      }).returning();
       
       res.json({
         success: true,
         data: {
           project: {
-            id: newProjectId,
-            name: newProject.name
+            id: newProject[0].id,
+            name: newProject[0].name
           },
           message: "Project created successfully"
         }
@@ -537,6 +471,168 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ 
         success: false,
         error: error instanceof Error ? error.message : "Failed to get analytics" 
+      });
+    }
+  });
+
+  // Workspace service - Get tasks
+  app.get("/api/workspace-service/projects/:projectId/tasks", async (req, res) => {
+    try {
+      res.json({
+        success: true,
+        data: []
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to get tasks" 
+      });
+    }
+  });
+
+  // Stakeholder service
+  app.get("/api/stakeholder-service/projects/:projectId/stakeholders", async (req, res) => {
+    try {
+      res.json({
+        success: true,
+        data: []
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to get stakeholders" 
+      });
+    }
+  });
+
+  // Discussion service
+  app.get("/api/discussion-service/projects/:projectId/discussions", async (req, res) => {
+    try {
+      res.json({
+        success: true,
+        data: []
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to get discussions" 
+      });
+    }
+  });
+
+  app.get("/api/discussion-service/projects/:projectId/action-items", async (req, res) => {
+    try {
+      res.json({
+        success: true,
+        data: []
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to get action items" 
+      });
+    }
+  });
+
+  app.get("/api/discussion-service/projects/:projectId/change-log", async (req, res) => {
+    try {
+      res.json({
+        success: true,
+        data: []
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to get change log" 
+      });
+    }
+  });
+
+  // Risk service
+  app.get("/api/risk-service/projects/:projectId/risks", async (req, res) => {
+    try {
+      res.json({
+        success: true,
+        data: []
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to get risks" 
+      });
+    }
+  });
+
+  // Task backlog service
+  app.get("/api/task-backlog-service/projects/:projectId/backlog", async (req, res) => {
+    try {
+      res.json({
+        success: true,
+        data: []
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to get backlog" 
+      });
+    }
+  });
+
+  app.get("/api/milestone-service/projects/:projectId/milestones", async (req, res) => {
+    try {
+      res.json({
+        success: true,
+        data: []
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to get milestones" 
+      });
+    }
+  });
+
+  // Team capacity service
+  app.get("/api/team-capacity-service/projects/:projectId/teams", async (req, res) => {
+    try {
+      res.json({
+        success: true,
+        data: []
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to get teams" 
+      });
+    }
+  });
+
+  // Retrospective service
+  app.get("/api/retrospective-service/projects/:projectId/retrospectives", async (req, res) => {
+    try {
+      res.json({
+        success: true,
+        data: []
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to get retrospectives" 
+      });
+    }
+  });
+
+  // Project members service
+  app.get("/api/project-service/projects/:projectId/members", async (req, res) => {
+    try {
+      res.json({
+        success: true,
+        data: []
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to get project members" 
       });
     }
   });

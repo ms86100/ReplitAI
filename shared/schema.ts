@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, boolean, integer, jsonb, uuid } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, boolean, integer, jsonb, uuid, date } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -57,3 +57,27 @@ export type InsertRestorationLog = z.infer<typeof insertRestorationLogSchema>;
 export type RestorationLog = typeof restorationLogs.$inferSelect;
 export type InsertVerificationResult = z.infer<typeof insertVerificationResultSchema>;
 export type VerificationResult = typeof verificationResults.$inferSelect;
+
+// Projects table
+export const projects = pgTable("projects", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  description: text("description"),
+  status: text("status").default("planning"),
+  priority: text("priority").default("medium"),
+  start_date: date("start_date"),
+  end_date: date("end_date"),
+  created_by: uuid("created_by").notNull(),
+  created_at: timestamp("created_at").default(sql`now()`),
+  updated_at: timestamp("updated_at").default(sql`now()`),
+  department_id: uuid("department_id"),
+});
+
+export const insertProjectSchema = createInsertSchema(projects).omit({
+  id: true,
+  created_at: true,
+  updated_at: true,
+});
+
+export type InsertProject = z.infer<typeof insertProjectSchema>;
+export type Project = typeof projects.$inferSelect;
