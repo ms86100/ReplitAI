@@ -18,6 +18,9 @@ const backupAnalyzer = new BackupAnalyzer();
 const databaseRestorer = new DatabaseRestorer();
 const databaseVerifier = new DatabaseVerifier();
 
+// In-memory storage for created projects
+const createdProjects: Map<string, any> = new Map();
+
 export async function registerRoutes(app: Express): Promise<Server> {
   
   // Upload backup file
@@ -195,33 +198,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Projects service - Get all projects
   app.get("/api/projects-service/projects", async (req, res) => {
     try {
-      // Return some sample projects for now
+      // Base sample projects
+      const baseProjects = [
+        {
+          id: "proj-1",
+          name: "Airbus A350 Engine Optimization",
+          description: "Optimize engine performance for next generation aircraft",
+          status: "active",
+          priority: "high",
+          start_date: "2024-01-15",
+          end_date: "2024-12-31",
+          created_by: "user-1",
+          created_at: "2024-01-15T00:00:00Z"
+        },
+        {
+          id: "proj-2", 
+          name: "Flight Management System Upgrade",
+          description: "Modernize flight management system software",
+          status: "planning",
+          priority: "medium",
+          start_date: "2024-03-01",
+          end_date: "2024-11-30",
+          created_by: "user-1",
+          created_at: "2024-02-01T00:00:00Z"
+        }
+      ];
+      
+      // Add created projects from memory
+      const allProjects = [...baseProjects, ...Array.from(createdProjects.values())];
+      
       res.json({
         success: true,
-        data: [
-          {
-            id: "proj-1",
-            name: "Airbus A350 Engine Optimization",
-            description: "Optimize engine performance for next generation aircraft",
-            status: "active",
-            priority: "high",
-            start_date: "2024-01-15",
-            end_date: "2024-12-31",
-            created_by: "user-1",
-            created_at: "2024-01-15T00:00:00Z"
-          },
-          {
-            id: "proj-2", 
-            name: "Flight Management System Upgrade",
-            description: "Modernize flight management system software",
-            status: "planning",
-            priority: "medium",
-            start_date: "2024-03-01",
-            end_date: "2024-11-30",
-            created_by: "user-1",
-            created_at: "2024-02-01T00:00:00Z"
-          }
-        ]
+        data: allProjects
       });
     } catch (error) {
       res.status(500).json({ 
@@ -236,7 +244,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const projectId = req.params.id;
       
-      // Return project details based on ID
+      // Check if it's a created project first
+      if (createdProjects.has(projectId)) {
+        res.json({
+          success: true,
+          data: createdProjects.get(projectId)
+        });
+        return;
+      }
+      
+      // Return project details based on ID for hardcoded projects
       const projects = {
         "proj-1": {
           id: "proj-1",
@@ -457,12 +474,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/wizard-service/projects/create", async (req, res) => {
     try {
       const newProjectId = `proj-${Date.now()}`;
+      const newProject = {
+        id: newProjectId,
+        name: req.body.projectName || 'New Project',
+        description: req.body.objective || '',
+        status: "active",
+        priority: "medium",
+        start_date: req.body.startDate || new Date().toISOString().split('T')[0],
+        end_date: req.body.endDate || new Date(Date.now() + 365*24*60*60*1000).toISOString().split('T')[0],
+        created_by: "6dc39f1e-2af3-4b78-8488-317d90f4f538", // Current user ID
+        created_at: new Date().toISOString(),
+        department_id: "dept-1"
+      };
+      
+      // Store in memory
+      createdProjects.set(newProjectId, newProject);
+      
       res.json({
         success: true,
         data: {
           project: {
             id: newProjectId,
-            name: req.body.projectName || 'New Project'
+            name: newProject.name
           },
           message: "Project created successfully"
         }
