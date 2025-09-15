@@ -19,11 +19,11 @@ export default function Migration() {
   const [currentStep, setCurrentStep] = useState(1);
   const [isUploading, setIsUploading] = useState(false);
   const [config, setConfig] = useState<DatabaseConfig>({
-    host: process.env.VITE_DB_HOST || "localhost",
-    port: parseInt(process.env.VITE_DB_PORT || "5432"),
-    database: process.env.VITE_DB_NAME || "postgres",
-    username: process.env.VITE_DB_USER || "postgres",
-    password: process.env.VITE_DB_PASSWORD || "",
+    host: import.meta.env.VITE_DB_HOST || "localhost",
+    port: parseInt(import.meta.env.VITE_DB_PORT || "5432"),
+    database: import.meta.env.VITE_DB_NAME || "postgres",
+    username: import.meta.env.VITE_DB_USER || "postgres",
+    password: import.meta.env.VITE_DB_PASSWORD || "",
   });
   const [optimization, setOptimization] = useState<OptimizationSettings>({
     selectiveRestore: true,
