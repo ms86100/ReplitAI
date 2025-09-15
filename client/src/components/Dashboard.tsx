@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation } from 'wouter';
 import { useApiAuth } from '@/hooks/useApiAuth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -32,7 +32,7 @@ interface DashboardStats {
 const Dashboard = () => {
   const { user } = useApiAuth();
   const { toast } = useToast();
-  const navigate = useNavigate();
+  const [, setLocation] = useLocation();
   const [projects, setProjects] = useState<Project[]>([]);
   const [stats, setStats] = useState<DashboardStats>({
     totalProjects: 0,
@@ -179,7 +179,7 @@ const Dashboard = () => {
       setShowDepartmentDialog(true);
       return;
     }
-    navigate('/create-project');
+    setLocation('/create-project');
   };
 
   const handleDepartmentAssigned = () => {
@@ -296,7 +296,7 @@ const Dashboard = () => {
                 Latest projects in the system
               </CardDescription>
             </div>
-            <Button variant="outline" onClick={() => navigate('/projects')}>
+            <Button variant="outline" onClick={() => setLocation('/projects')}>
               View All Projects
             </Button>
           </div>
@@ -313,7 +313,7 @@ const Dashboard = () => {
                 <Card 
                   key={project.id} 
                   className="hover:shadow-md transition-shadow border border-border cursor-pointer"
-                  onClick={() => navigate(`/project/${project.id}`)}
+                  onClick={() => setLocation(`/project/${project.id}`)}
                 >
                   <CardHeader className="pb-3">
                     <div className="flex items-start justify-between">

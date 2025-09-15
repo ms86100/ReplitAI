@@ -1,0 +1,38 @@
+=== LOGIN ATTEMPT START ===
+Email: ms861000@gmail.com
+=== LOGIN RESPONSE ===
+Error: undefined
+=== LOGIN SUCCESS ===
+🔄 Navigating to dashboard after successful login
+🏠 Index page loaded
+👤 Current user: No user
+⏳ Loading state: false
+useNavigate() may be used only in the context of a  component.
+useNavigate() may be used only in the context of a  component.
+The above error occurred in the <Dashboard> component:
+
+    at Dashboard (https://d258915e-7d36-403a-978a-75cbf855689b-00-j3m07eq79i6p.worf.replit.dev/src/components/Dashboard.tsx:31:20)
+    at div
+    at main
+    at div
+    at div
+    at div
+    at Provider (https://d258915e-7d36-403a-978a-75cbf855689b-00-j3m07eq79i6p.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-3RXG37ZK.js?v=a5f44aec:38:15)
+    at TooltipProvider (https://d258915e-7d36-403a-978a-75cbf855689b-00-j3m07eq79i6p.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=a5f44aec:64:5)
+    at https://d258915e-7d36-403a-978a-75cbf855689b-00-j3m07eq79i6p.worf.replit.dev/src/components/ui/sidebar.tsx:54:7
+    at DashboardLayout (https://d258915e-7d36-403a-978a-75cbf855689b-00-j3m07eq79i6p.worf.replit.dev/src/components/DashboardLayout.tsx:34:28)
+    at Index (https://d258915e-7d36-403a-978a-75cbf855689b-00-j3m07eq79i6p.worf.replit.dev/src/pages/Index.tsx:24:29)
+    at Route (https://d258915e-7d36-403a-978a-75cbf855689b-00-j3m07eq79i6p.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=a5f44aec:323:16)
+    at ProjectProvider (https://d258915e-7d36-403a-978a-75cbf855689b-00-j3m07eq79i6p.worf.replit.dev/src/hooks/useProjectContext.tsx:21:35)
+    at Router (https://d258915e-7d36-403a-978a-75cbf855689b-00-j3m07eq79i6p.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=a5f44aec:291:17)
+    at div
+    at div
+    at Provider (https://d258915e-7d36-403a-978a-75cbf855689b-00-j3m07eq79i6p.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-3RXG37ZK.js?v=a5f44aec:38:15)
+    at TooltipProvider (https://d258915e-7d36-403a-978a-75cbf855689b-00-j3m07eq79i6p.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=a5f44aec:64:5)
+    at AuthProvider (https://d258915e-7d36-403a-978a-75cbf855689b-00-j3m07eq79i6p.worf.replit.dev/src/hooks/useApiAuth.tsx:38:32)
+    at QueryClientProvider (https://d258915e-7d36-403a-978a-75cbf855689b-00-j3m07eq79i6p.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=a5f44aec:2805:3)
+    at App
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+useNavigate() may be used only in the context of a  component.
