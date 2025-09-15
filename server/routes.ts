@@ -1,0 +1,154 @@
+import type { Express } from "express";
+import { createServer, type Server } from "http";
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs/promises';
+import { storage } from "./storage";
+import { BackupAnalyzer } from "./services/backup-analyzer";
+import { DatabaseRestorer } from "./services/database-restorer";
+import { DatabaseVerifier } from "./services/verification";
+import { insertMigrationJobSchema } from "@shared/schema";
+
+const upload = multer({ 
+  dest: 'uploads/',
+  limits: { fileSize: 100 * 1024 * 1024 } // 100MB limit
+});
+
+const backupAnalyzer = new BackupAnalyzer();
+const databaseRestorer = new DatabaseRestorer();
+const databaseVerifier = new DatabaseVerifier();
+
+export async function registerRoutes(app: Express): Promise<Server> {
+  
+  // Upload backup file
+  app.post("/api/upload-backup", upload.single('backup'), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: "No backup file provided" });
+      }
+
+      const stats = await fs.stat(req.file.path);
+      
+      const job = await storage.createMigrationJob({
+        filename: req.file.originalname,
+        fileSize: stats.size,
+        status: "analyzing",
+      });
+
+      // Analyze backup in background
+      try {
+        const backupInfo = await backupAnalyzer.analyzeBackup(req.file.path);
+        await storage.updateMigrationJob(job.id, {
+          status: "configuring",
+          backupInfo,
+        });
+      } catch (error) {
+        await storage.updateMigrationJob(job.id, {
+          status: "failed",
+          errorMessage: error instanceof Error ? error.message : "Analysis failed",
+        });
+      }
+
+      res.json({ jobId: job.id, job });
+    } catch (error) {
+      res.status(500).json({ 
+        error: error instanceof Error ? error.message : "Upload failed" 
+      });
+    }
+  });
+
+  // Get job status
+  app.get("/api/jobs/:id", async (req, res) => {
+    try {
+      const job = await storage.getMigrationJob(req.params.id);
+      if (!job) {
+        return res.status(404).json({ error: "Job not found" });
+      }
+      res.json(job);
+    } catch (error) {
+      res.status(500).json({ 
+        error: error instanceof Error ? error.message : "Failed to get job" 
+      });
+    }
+  });
+
+  // Test database connection
+  app.post("/api/test-connection", async (req, res) => {
+    try {
+      const { config } = req.body;
+      const isConnected = await databaseRestorer.testConnection(config);
+      res.json({ connected: isConnected });
+    } catch (error) {
+      res.status(500).json({ 
+        error: error instanceof Error ? error.message : "Connection test failed",
+        connected: false 
+      });
+    }
+  });
+
+  // Start restoration
+  app.post("/api/restore/:id", async (req, res) => {
+    try {
+      const { config, optimization } = req.body;
+      const job = await storage.getMigrationJob(req.params.id);
+      
+      if (!job) {
+        return res.status(404).json({ error: "Job not found" });
+      }
+
+      await storage.updateMigrationJob(job.id, { config, status: "restoring" });
+
+      // Start restoration in background
+      const backupPath = path.join('uploads', job.filename);
+      
+      databaseRestorer.restoreDatabase(job.id, backupPath, config, optimization)
+        .then(() => databaseVerifier.verifyRestoration(job.id, config))
+        .catch(error => console.error("Restoration failed:", error));
+
+      res.json({ message: "Restoration started" });
+    } catch (error) {
+      res.status(500).json({ 
+        error: error instanceof Error ? error.message : "Failed to start restoration" 
+      });
+    }
+  });
+
+  // Get restoration logs
+  app.get("/api/logs/:id", async (req, res) => {
+    try {
+      const logs = await storage.getRestorationLogs(req.params.id);
+      res.json(logs);
+    } catch (error) {
+      res.status(500).json({ 
+        error: error instanceof Error ? error.message : "Failed to get logs" 
+      });
+    }
+  });
+
+  // Get verification results
+  app.get("/api/verification/:id", async (req, res) => {
+    try {
+      const results = await storage.getVerificationResults(req.params.id);
+      res.json(results);
+    } catch (error) {
+      res.status(500).json({ 
+        error: error instanceof Error ? error.message : "Failed to get verification results" 
+      });
+    }
+  });
+
+  // Get all jobs
+  app.get("/api/jobs", async (req, res) => {
+    try {
+      const jobs = await storage.getAllMigrationJobs();
+      res.json(jobs);
+    } catch (error) {
+      res.status(500).json({ 
+        error: error instanceof Error ? error.message : "Failed to get jobs" 
+      });
+    }
+  });
+
+  const httpServer = createServer(app);
+  return httpServer;
+}
