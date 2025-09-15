@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation } from 'wouter';
 
 interface ProjectContextType {
   selectedProjectId: string | null;
@@ -15,17 +15,19 @@ interface ProjectProviderProps {
 
 export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) => {
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
-  const location = useLocation();
+  const [location] = useLocation();
 
   // Auto-detect project from URL
   useEffect(() => {
-    const projectMatch = location.pathname.match(/\/project\/([^\/]+)/);
+    if (!location) return;
+    
+    const projectMatch = location.match(/\/project\/([^\/]+)/);
     if (projectMatch) {
       setSelectedProjectId(projectMatch[1]);
-    } else if (!location.pathname.startsWith('/project/')) {
+    } else if (!location.startsWith('/project/')) {
       setSelectedProjectId(null);
     }
-  }, [location.pathname]);
+  }, [location]);
 
   const isProjectSelected = !!selectedProjectId;
 
