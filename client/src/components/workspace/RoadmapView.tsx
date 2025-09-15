@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams } from 'wouter';
 import { apiClient } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -105,35 +105,26 @@ export function RoadmapView() {
     try {
       setLoading(true);
       
-      // Fetch milestones from workspace service to ensure consistency with tasks
-      const milestonesResponse = await apiClient.getMilestones(id!);
-      if (!milestonesResponse.success) {
-        console.error('Failed to fetch milestones:', milestonesResponse.error);
-        setMilestones([]);
-      } else {
-        setMilestones(milestonesResponse.data || []);
+      // Fetch roadmap data from new aggregated endpoint
+      const roadmapResponse = await fetch(`/api/roadmap-service/projects/${id}/roadmap`);
+      if (!roadmapResponse.ok) {
+        throw new Error('Failed to fetch roadmap data');
       }
       
-      // Fetch tasks separately from workspace service
-      const tasksResponse = await apiClient.getTasks(id!);
-      if (!tasksResponse.success) {
-        console.error('Failed to fetch tasks:', tasksResponse.error);
-        setTasks([]);
-      } else {
-        setTasks(tasksResponse.data || []);
+      const roadmapData = await roadmapResponse.json();
+      if (roadmapData.success) {
+        setTasks(roadmapData.data.tasks || []);
+        setMilestones(roadmapData.data.milestones || []);
       }
 
-      // Fetch stakeholders
+      // Fetch stakeholders separately as they're still needed
       const stakeholdersResponse = await apiClient.getStakeholders(id!);
-      if (!stakeholdersResponse.success) {
-        console.error('Failed to fetch stakeholders:', stakeholdersResponse.error);
-        setStakeholders([]);
-      } else {
+      if (stakeholdersResponse.success) {
         setStakeholders(stakeholdersResponse.data.stakeholders || []);
       }
       
     } catch (error) {
-      console.error('Error fetching data:', error);
+      console.error('Error fetching roadmap data:', error);
       toast({
         title: "Error",
         description: "Failed to load roadmap data.",

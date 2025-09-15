@@ -847,6 +847,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Roadmap service
+  app.get("/api/roadmap-service/projects/:projectId/roadmap", async (req, res) => {
+    try {
+      const projectId = req.params.projectId;
+      const [projectTasks, projectMilestones] = await Promise.all([
+        db.select().from(tasks).where(eq(tasks.project_id, projectId)),
+        db.select().from(milestones).where(eq(milestones.project_id, projectId))
+      ]);
+      
+      res.json({
+        success: true,
+        data: {
+          tasks: projectTasks,
+          milestones: projectMilestones,
+          timeline: {
+            viewMode: 'monthly',
+            currentDate: new Date().toISOString()
+          }
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to get roadmap data" 
+      });
+    }
+  });
+
   app.get("/api/milestone-service/projects/:projectId/milestones", async (req, res) => {
     try {
       const projectId = req.params.projectId;
