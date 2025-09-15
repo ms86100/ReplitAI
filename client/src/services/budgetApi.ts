@@ -8,11 +8,11 @@ class BudgetApiService {
       const method = options.method || 'GET';
       const body = options.body;
       
-      const response = await apiRequest(method as any, endpoint, body ? JSON.parse(body as string) : undefined);
+      const response = await apiRequest(method as 'GET' | 'POST' | 'PUT' | 'DELETE', endpoint, body ? JSON.parse(body as string) : undefined);
       return response;
     } catch (error) {
       console.error('❌ Budget API Error:', {
-        error: error.message || error,
+        error: (error as Error).message || error,
         endpoint
       });
       throw error;

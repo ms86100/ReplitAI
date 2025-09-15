@@ -40,8 +40,7 @@ export default function Migration() {
   const { data: job, isLoading: jobLoading } = useQuery({
     queryKey: ["/api/jobs", currentJobId],
     enabled: !!currentJobId,
-    refetchInterval: (data) => currentJobId && 
-      (!data || (data.status !== "completed" && data.status !== "failed")) ? 2000 : false,
+    refetchInterval: 2000,
   }) as { data: MigrationJob | undefined; isLoading: boolean };
 
   // Upload mutation
