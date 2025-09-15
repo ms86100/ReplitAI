@@ -87,7 +87,7 @@ const ProjectWorkspace = () => {
                     Settings
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => navigate('/auth')}>
+                  <DropdownMenuItem onClick={() => setLocation('/auth')}>
                     <LogOut className="mr-2 h-4 w-4" />
                     Sign out
                   </DropdownMenuItem>
