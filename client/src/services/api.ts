@@ -22,8 +22,8 @@ class ApiClient {
       this.baseUrl = 'http://localhost:3001';
       this.isLocalBackend = true;
     } else {
-      // Replit environment: use local backend on port 5000
-      this.baseUrl = 'http://localhost:5000/api';
+      // Replit environment: use current origin + /api
+      this.baseUrl = `${window.location.origin}/api`;
       this.isLocalBackend = true;
     }
   }

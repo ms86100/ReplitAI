@@ -231,6 +231,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Projects service - Get specific project
+  app.get("/api/projects-service/projects/:id", async (req, res) => {
+    try {
+      const projectId = req.params.id;
+      
+      // Return project details based on ID
+      const projects = {
+        "proj-1": {
+          id: "proj-1",
+          name: "Airbus A350 Engine Optimization",
+          description: "Optimize engine performance for next generation aircraft",
+          status: "active",
+          priority: "high",
+          start_date: "2024-01-15",
+          end_date: "2024-12-31",
+          created_by: "user-1",
+          created_at: "2024-01-15T00:00:00Z",
+          department_id: "dept-1"
+        },
+        "proj-2": {
+          id: "proj-2", 
+          name: "Flight Management System Upgrade",
+          description: "Modernize flight management system software",
+          status: "planning",
+          priority: "medium",
+          start_date: "2024-03-01",
+          end_date: "2024-11-30",
+          created_by: "user-1",
+          created_at: "2024-02-01T00:00:00Z",
+          department_id: "dept-2"
+        }
+      };
+
+      const project = projects[projectId as keyof typeof projects];
+      if (!project) {
+        return res.status(404).json({
+          success: false,
+          error: "Project not found"
+        });
+      }
+
+      res.json({
+        success: true,
+        data: project
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to get project" 
+      });
+    }
+  });
+
   // Projects service - Get project stats
   app.get("/api/projects-service/stats", async (req, res) => {
     try {
@@ -247,6 +300,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ 
         success: false,
         error: error instanceof Error ? error.message : "Failed to get project stats" 
+      });
+    }
+  });
+
+  // Department service - Get all departments
+  app.get("/api/department-service/departments", async (req, res) => {
+    try {
+      res.json({
+        success: true,
+        data: [
+          {
+            id: "dept-1",
+            name: "Engineering",
+            description: "Software and systems engineering department",
+            created_at: "2024-01-01T00:00:00Z"
+          },
+          {
+            id: "dept-2", 
+            name: "Flight Operations",
+            description: "Aircraft operations and safety department",
+            created_at: "2024-01-01T00:00:00Z"
+          }
+        ]
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to get departments" 
       });
     }
   });

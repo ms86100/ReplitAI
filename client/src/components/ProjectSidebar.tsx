@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { useLocation } from 'wouter';
 import { Calendar, LayoutGrid, Users, Settings, ArrowLeft, AlertTriangle, MessageCircle, BarChart3, RotateCcw, Shield, Activity, DollarSign } from 'lucide-react';
 import { AccessControlDialog } from '@/components/access-control/AccessControlDialog';
 import { AuditLogView } from '@/components/audit/AuditLogView';
@@ -122,11 +122,10 @@ const sidebarItems: Array<{
 ];
 
 export function ProjectSidebar({ projectId }: ProjectSidebarProps) {
-  const navigate = useNavigate();
+  const [, setLocation] = useLocation();
   const { state } = useSidebar();
   const collapsed = state === 'collapsed';
-  const location = useLocation();
-  const currentPath = location.pathname;
+  const currentPath = window.location.pathname;
   const [showAuditLog, setShowAuditLog] = useState(false);
   const { isProjectOwner, canRead, loading } = useModulePermissions(projectId);
 
@@ -147,7 +146,7 @@ export function ProjectSidebar({ projectId }: ProjectSidebarProps) {
         <Button 
           variant="outline" 
           size="sm"
-          onClick={() => navigate('/')}
+          onClick={() => setLocation('/')}
           className="flex items-center gap-2 w-full justify-start"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -178,18 +177,20 @@ export function ProjectSidebar({ projectId }: ProjectSidebarProps) {
               }
 
               return (
-                <NavLink
+                <Button
                   key={item.id}
-                  to={`/project/${projectId}/${item.path}`}
-                  className={`flex items-center gap-3 px-3 py-2.5 mx-3 rounded-lg text-sm font-medium transition-all duration-200 ${
+                  variant="ghost"
+                  onClick={() => setLocation(`/project/${projectId}/${item.path}`)}
+                  className={`flex items-center gap-3 px-3 py-2.5 mx-3 rounded-lg text-sm font-medium transition-all duration-200 w-full justify-start ${
                     itemIsActive
                       ? "bg-primary text-primary-foreground shadow-sm"
                       : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                   }`}
+                  data-testid={`link-${item.id}`}
                 >
                   <item.icon className="h-4 w-4 flex-shrink-0" />
                   <span className="truncate">{item.title}</span>
-                </NavLink>
+                </Button>
               );
             })
           )}
@@ -217,7 +218,7 @@ export function ProjectSidebar({ projectId }: ProjectSidebarProps) {
         
         <nav className="px-3 space-y-1">
           <button 
-            onClick={() => navigate(`/project/${projectId}`)}
+            onClick={() => setLocation(`/project/${projectId}`)}
             className="flex items-center gap-3 px-3 py-2.5 mx-3 rounded-lg text-sm font-medium transition-all duration-200 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground w-full text-left"
           >
             <Settings className="h-4 w-4 flex-shrink-0" />
