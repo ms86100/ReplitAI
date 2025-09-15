@@ -181,7 +181,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({
         success: true,
         data: {
-          role: "admin"
+          role: "user"
         }
       });
     } catch (error) {
@@ -207,7 +207,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             priority: "high",
             start_date: "2024-01-15",
             end_date: "2024-12-31",
-            created_by: req.params.userId || "user-1",
+            created_by: "user-1",
             created_at: "2024-01-15T00:00:00Z"
           },
           {
@@ -218,7 +218,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             priority: "medium",
             start_date: "2024-03-01",
             end_date: "2024-11-30",
-            created_by: req.params.userId || "user-1",
+            created_by: "user-1",
             created_at: "2024-02-01T00:00:00Z"
           }
         ]
@@ -328,6 +328,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ 
         success: false,
         error: error instanceof Error ? error.message : "Failed to get departments" 
+      });
+    }
+  });
+
+  // Auth service - Login
+  app.post("/api/auth-service/login", async (req, res) => {
+    try {
+      const { email, password } = req.body;
+      
+      // Simple auth check
+      if (email === "ms861000@gmail.com" && password) {
+        const userId = "6dc39f1e-2af3-4b78-8488-317d90f4f538";
+        res.json({
+          success: true,
+          data: {
+            user: {
+              id: userId,
+              email: email,
+              full_name: "Project Manager",
+              department_id: "dept-1"
+            },
+            session: {
+              access_token: "token_" + userId,
+              user: {
+                id: userId,
+                email: email
+              }
+            }
+          }
+        });
+      } else {
+        res.status(401).json({
+          success: false,
+          error: "Invalid credentials"
+        });
+      }
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Login failed" 
+      });
+    }
+  });
+
+  // Auth service - Logout
+  app.post("/api/auth-service/logout", async (req, res) => {
+    try {
+      res.json({
+        success: true,
+        data: {
+          message: "Logged out successfully"
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Logout failed" 
       });
     }
   });
