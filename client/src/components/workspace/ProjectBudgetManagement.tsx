@@ -546,7 +546,7 @@ export function ProjectBudgetManagement({ projectId }: ProjectBudgetManagementPr
                       </SelectTrigger>
                       <SelectContent>
                         {budgetTypes.length === 0 ? (
-                          <SelectItem value="" disabled>No budget types available</SelectItem>
+                          <SelectItem value="none" disabled>No budget types available</SelectItem>
                         ) : (
                           budgetTypes.map((type) => (
                             <SelectItem key={type.code} value={type.code}>

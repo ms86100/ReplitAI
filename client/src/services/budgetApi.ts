@@ -21,11 +21,11 @@ class BudgetApiService {
 
   // Budget operations
   async getProjectBudget(projectId: string) {
-    return this.makeRequest(`/budget-service/projects/${projectId}/budget`);
+    return this.makeRequest(`/api/budget-service/projects/${projectId}/budget`);
   }
 
   async createOrUpdateBudget(projectId: string, budgetData: any) {
-    return this.makeRequest(`/budget-service/projects/${projectId}/budget`, {
+    return this.makeRequest(`/api/budget-service/projects/${projectId}/budget`, {
       method: 'POST',
       body: JSON.stringify(budgetData),
     });
@@ -33,37 +33,37 @@ class BudgetApiService {
 
   // Budget categories
   async createBudgetCategory(projectId: string, categoryData: any) {
-    return this.makeRequest(`/budget-service/projects/${projectId}/categories`, {
+    return this.makeRequest(`/api/budget-service/projects/${projectId}/categories`, {
       method: 'POST',
       body: JSON.stringify(categoryData),
     });
   }
 
   // Delete budget category
-  async deleteBudgetCategory(categoryId: string) {
-    return this.makeRequest(`/budget-service/categories/${categoryId}`, {
+  async deleteBudgetCategory(projectId: string, categoryId: string) {
+    return this.makeRequest(`/api/budget-service/projects/${projectId}/categories/${categoryId}`, {
       method: 'DELETE',
     });
   }
 
   // Spending entries
-  async createSpendingEntry(categoryId: string, spendingData: any) {
-    return this.makeRequest(`/budget-service/categories/${categoryId}/spending`, {
+  async createSpendingEntry(projectId: string, spendingData: any) {
+    return this.makeRequest(`/api/budget-service/projects/${projectId}/spending`, {
       method: 'POST',
       body: JSON.stringify(spendingData),
     });
   }
 
   // Delete spending entry
-  async deleteSpendingEntry(spendingId: string) {
-    return this.makeRequest(`/budget-service/spending/${spendingId}`, {
+  async deleteSpendingEntry(projectId: string, spendingId: string) {
+    return this.makeRequest(`/api/budget-service/projects/${projectId}/spending/${spendingId}`, {
       method: 'DELETE',
     });
   }
 
   // Budget types
   async getBudgetTypes() {
-    return this.makeRequest('/budget-service/budget-types');
+    return this.makeRequest('/api/budget-service/budget-types');
   }
 }
 

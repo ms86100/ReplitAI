@@ -7,7 +7,7 @@ import { storage } from "./storage";
 import { BackupAnalyzer } from "./services/backup-analyzer";
 import { DatabaseRestorer } from "./services/database-restorer";
 import { DatabaseVerifier } from "./services/verification";
-import { insertMigrationJobSchema, projects, insertProjectSchema, budgetTypeConfig, projectBudgets, budgetCategories, budgetSpending, budgetReceipts, insertBudgetCategorySchema, insertBudgetSpendingSchema } from "@shared/schema";
+import { insertMigrationJobSchema, projects, insertProjectSchema, budgetTypeConfig, projectBudgets, budgetCategories, budgetSpending, budgetReceipts, insertBudgetCategorySchema, insertBudgetSpendingSchema, tasks, milestones, stakeholders, riskRegister, insertTaskSchema, insertMilestoneSchema, insertStakeholderSchema, insertRiskSchema } from "@shared/schema";
 import { neon } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
 import * as schema from '../shared/schema';
@@ -478,9 +478,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Workspace service - Get tasks
   app.get("/api/workspace-service/projects/:projectId/tasks", async (req, res) => {
     try {
+      const projectId = req.params.projectId;
+      const projectTasks = await db.select().from(tasks).where(eq(tasks.project_id, projectId));
+      
       res.json({
         success: true,
-        data: []
+        data: projectTasks
       });
     } catch (error) {
       res.status(500).json({ 
@@ -490,17 +493,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Workspace service - Create task
+  app.post("/api/workspace-service/projects/:projectId/tasks", async (req, res) => {
+    try {
+      const projectId = req.params.projectId;
+      const taskData = insertTaskSchema.parse({
+        ...req.body,
+        project_id: projectId,
+        created_by: "6dc39f1e-2af3-4b78-8488-317d90f4f538"
+      });
+      
+      const newTask = await db.insert(tasks).values(taskData).returning();
+      
+      res.json({
+        success: true,
+        data: newTask[0]
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to create task" 
+      });
+    }
+  });
+
   // Stakeholder service
   app.get("/api/stakeholder-service/projects/:projectId/stakeholders", async (req, res) => {
     try {
+      const projectId = req.params.projectId;
+      const projectStakeholders = await db.select().from(stakeholders).where(eq(stakeholders.project_id, projectId));
+      
       res.json({
         success: true,
-        data: []
+        data: projectStakeholders
       });
     } catch (error) {
       res.status(500).json({ 
         success: false,
         error: error instanceof Error ? error.message : "Failed to get stakeholders" 
+      });
+    }
+  });
+
+  // Stakeholder service - Create stakeholder
+  app.post("/api/stakeholder-service/projects/:projectId/stakeholders", async (req, res) => {
+    try {
+      const projectId = req.params.projectId;
+      const stakeholderData = insertStakeholderSchema.parse({
+        ...req.body,
+        project_id: projectId,
+        created_by: "6dc39f1e-2af3-4b78-8488-317d90f4f538"
+      });
+      
+      const newStakeholder = await db.insert(stakeholders).values(stakeholderData).returning();
+      
+      res.json({
+        success: true,
+        data: newStakeholder[0]
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to create stakeholder" 
       });
     }
   });
@@ -548,17 +602,84 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Risk service
+  // Risk service  
   app.get("/api/risk-service/projects/:projectId/risks", async (req, res) => {
     try {
+      const projectId = req.params.projectId;
+      const projectRisks = await db.select().from(riskRegister).where(eq(riskRegister.project_id, projectId));
+      
       res.json({
         success: true,
-        data: []
+        data: projectRisks
       });
     } catch (error) {
       res.status(500).json({ 
         success: false,
         error: error instanceof Error ? error.message : "Failed to get risks" 
+      });
+    }
+  });
+
+  app.get("/api/workspace-service/projects/:projectId/risks", async (req, res) => {
+    try {
+      const projectId = req.params.projectId;
+      const projectRisks = await db.select().from(riskRegister).where(eq(riskRegister.project_id, projectId));
+      
+      res.json({
+        success: true,
+        data: projectRisks
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to get risks" 
+      });
+    }
+  });
+
+  // Risk service - Create risk
+  app.post("/api/risk-service/projects/:projectId/risks", async (req, res) => {
+    try {
+      const projectId = req.params.projectId;
+      const riskData = insertRiskSchema.parse({
+        ...req.body,
+        project_id: projectId,
+        created_by: "6dc39f1e-2af3-4b78-8488-317d90f4f538"
+      });
+      
+      const newRisk = await db.insert(riskRegister).values(riskData).returning();
+      
+      res.json({
+        success: true,
+        data: newRisk[0]
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to create risk" 
+      });
+    }
+  });
+
+  app.post("/api/workspace-service/projects/:projectId/risks", async (req, res) => {
+    try {
+      const projectId = req.params.projectId;
+      const riskData = insertRiskSchema.parse({
+        ...req.body,
+        project_id: projectId,
+        created_by: "6dc39f1e-2af3-4b78-8488-317d90f4f538"
+      });
+      
+      const newRisk = await db.insert(riskRegister).values(riskData).returning();
+      
+      res.json({
+        success: true,
+        data: newRisk[0]
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to create risk" 
       });
     }
   });
@@ -580,14 +701,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/milestone-service/projects/:projectId/milestones", async (req, res) => {
     try {
+      const projectId = req.params.projectId;
+      const projectMilestones = await db.select().from(milestones).where(eq(milestones.project_id, projectId));
+      
       res.json({
         success: true,
-        data: []
+        data: projectMilestones
       });
     } catch (error) {
       res.status(500).json({ 
         success: false,
         error: error instanceof Error ? error.message : "Failed to get milestones" 
+      });
+    }
+  });
+
+  app.get("/api/workspace-service/projects/:projectId/milestones", async (req, res) => {
+    try {
+      const projectId = req.params.projectId;
+      const projectMilestones = await db.select().from(milestones).where(eq(milestones.project_id, projectId));
+      
+      res.json({
+        success: true,
+        data: projectMilestones
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to get milestones" 
+      });
+    }
+  });
+
+  // Milestone service - Create milestone
+  app.post("/api/milestone-service/projects/:projectId/milestones", async (req, res) => {
+    try {
+      const projectId = req.params.projectId;
+      const milestoneData = insertMilestoneSchema.parse({
+        ...req.body,
+        project_id: projectId,
+        created_by: "6dc39f1e-2af3-4b78-8488-317d90f4f538"
+      });
+      
+      const newMilestone = await db.insert(milestones).values(milestoneData).returning();
+      
+      res.json({
+        success: true,
+        data: newMilestone[0]
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to create milestone" 
       });
     }
   });
