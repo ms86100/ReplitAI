@@ -395,16 +395,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({
         success: true,
         data: [
-          { module: "overview", accessLevel: "write" },
-          { module: "kanban", accessLevel: "write" },
-          { module: "roadmap", accessLevel: "write" },
-          { module: "stakeholders", accessLevel: "write" },
-          { module: "risks", accessLevel: "write" },
-          { module: "status", accessLevel: "write" },
-          { module: "discussions", accessLevel: "write" },
-          { module: "task_backlog", accessLevel: "write" },
-          { module: "team_capacity", accessLevel: "write" },
-          { module: "retrospectives", accessLevel: "write" }
+          { module: "overview", access_level: "write" },
+          { module: "kanban", access_level: "write" },
+          { module: "roadmap", access_level: "write" },
+          { module: "stakeholders", access_level: "write" },
+          { module: "risks", access_level: "write" },
+          { module: "status", access_level: "write" },
+          { module: "discussions", access_level: "write" },
+          { module: "task_backlog", access_level: "write" },
+          { module: "team_capacity", access_level: "write" },
+          { module: "retrospectives", access_level: "write" },
+          { module: "tasks_milestones", access_level: "write" },
+          { module: "risk_register", access_level: "write" },
+          { module: "budget", access_level: "write" },
+          { module: "access_control", access_level: "write" }
         ]
       });
     } catch (error) {
@@ -445,6 +449,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ 
         success: false,
         error: error instanceof Error ? error.message : "Failed to get workspace" 
+      });
+    }
+  });
+
+  // Wizard service - Create project
+  app.post("/api/wizard-service/projects/create", async (req, res) => {
+    try {
+      const newProjectId = `proj-${Date.now()}`;
+      res.json({
+        success: true,
+        data: {
+          project: {
+            id: newProjectId,
+            name: req.body.projectName || 'New Project'
+          },
+          message: "Project created successfully"
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to create project" 
+      });
+    }
+  });
+
+  // Analytics service - Project overview
+  app.get("/api/analytics-service/projects/:projectId/project-overview", async (req, res) => {
+    try {
+      res.json({
+        success: true,
+        data: {
+          totalTasks: 45,
+          completedTasks: 28,
+          overdueTasks: 3,
+          activeMilestones: 4,
+          upcomingDeadlines: 2,
+          projectHealth: "on-track",
+          budgetUtilization: 65,
+          teamUtilization: 78,
+          tasksByOwner: [
+            { owner: "John Doe", total: 12, completed: 8 },
+            { owner: "Jane Smith", total: 15, completed: 10 },
+            { owner: "Mike Johnson", total: 8, completed: 5 }
+          ],
+          recentActivity: [
+            { type: "task-completed", description: "Design review completed", timestamp: new Date() },
+            { type: "milestone-reached", description: "Phase 1 milestone achieved", timestamp: new Date() }
+          ]
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to get analytics" 
       });
     }
   });
