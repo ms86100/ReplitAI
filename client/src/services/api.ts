@@ -11,7 +11,7 @@ class ApiClient {
   private baseUrl: string;
 
   constructor() {
-    // Determine environment: local Express vs Supabase Edge Functions
+    // Always use Replit backend - no Supabase dependency
     const apiUrl = import.meta.env.VITE_API_URL as string | undefined;
     const onLocalhost = typeof window !== 'undefined' && window.location.hostname === 'localhost';
 
@@ -22,9 +22,9 @@ class ApiClient {
       this.baseUrl = 'http://localhost:3001';
       this.isLocalBackend = true;
     } else {
-      // Cloud/preview: use Supabase Edge Functions
-      this.baseUrl = 'https://knivoexfpvqohsvpsziq.supabase.co/functions/v1';
-      this.isLocalBackend = false;
+      // Replit environment: use local backend on port 5000
+      this.baseUrl = 'http://localhost:5000/api';
+      this.isLocalBackend = true;
     }
   }
 
@@ -32,24 +32,7 @@ class ApiClient {
 
   private async getAuthToken(): Promise<string | null> {
     try {
-      // For Supabase Edge Functions, always use Supabase auth
-      if (!this.isLocalBackend) {
-        const { supabase } = await import('@/integrations/supabase/client');
-        
-        // First try to get current session
-        let { data: { session }, error } = await supabase.auth.getSession();
-        
-        // If session exists and is valid, return token
-        if (session?.access_token && !error) {
-          return session.access_token;
-        }
-        
-        // If no session, don't attempt refresh - just return null
-        // This prevents infinite loops
-        return null;
-      }
-
-      // Use microservice-stored session tokens for local backend
+      // Always use local storage for Replit backend
       const storedAuth = localStorage.getItem('auth_session') || localStorage.getItem('app_session');
       if (storedAuth) {
         try {
