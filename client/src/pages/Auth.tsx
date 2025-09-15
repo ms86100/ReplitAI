@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation } from 'wouter';
 import { useApiAuth } from '@/hooks/useApiAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,15 +16,15 @@ const Auth = () => {
   const [fullName, setFullName] = useState('');
   const { signIn, signUp, user } = useApiAuth();
   const { toast } = useToast();
-  const navigate = useNavigate();
+  const [, setLocation] = useLocation();
 
   // Redirect authenticated users away from auth page
   React.useEffect(() => {
     if (user) {
       console.log('✅ User is already authenticated, redirecting to dashboard');
-      navigate('/', { replace: true });
+      setLocation('/');
     }
-  }, [user, navigate]);
+  }, [user, setLocation]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,7 +52,7 @@ const Auth = () => {
         if (window.location.hostname.includes('vercel.app')) {
           window.location.href = '/';
         } else {
-          navigate('/', { replace: true });
+          setLocation('/');
         }
       }
     } catch (err) {

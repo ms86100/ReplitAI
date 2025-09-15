@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useLocation } from 'wouter';
 import { useApiAuth } from '@/hooks/useApiAuth';
 import { apiClient } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
@@ -26,7 +26,7 @@ interface Project {
 
 const EditProject = () => {
   const { id } = useParams();
-  const navigate = useNavigate();
+  const [, setLocation] = useLocation();
   const { user } = useApiAuth();
   const { toast } = useToast();
 
@@ -96,7 +96,7 @@ const EditProject = () => {
         description: "Project details have been saved successfully.",
       });
       
-      navigate(`/project/${project.id}`);
+      setLocation(`/project/${project.id}`);
     } catch (error: any) {
       console.error('Error updating project:', error);
       toast({
@@ -110,7 +110,7 @@ const EditProject = () => {
   };
 
   const handleCancel = () => {
-    navigate(`/project/${id}`);
+    setLocation(`/project/${id}`);
   };
 
   if (loading) {
@@ -141,7 +141,7 @@ const EditProject = () => {
           <div className="flex items-center gap-4">
             <Button 
               variant="ghost" 
-              onClick={() => navigate(`/project/${id}`)}
+              onClick={() => setLocation(`/project/${id}`)}
               className="flex items-center gap-2"
             >
               <ArrowLeft className="h-4 w-4" />
