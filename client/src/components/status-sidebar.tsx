@@ -169,7 +169,7 @@ export function StatusSidebar({
             </Button>
           </div>
         </CardContent>
-      </CardContent>
-    </Card>
+      </Card>
+    </div>
   );
 }

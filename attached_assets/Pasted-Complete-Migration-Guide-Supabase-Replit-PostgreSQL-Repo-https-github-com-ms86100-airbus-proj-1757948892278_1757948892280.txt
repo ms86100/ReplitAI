@@ -1,0 +1,189 @@
+Complete Migration Guide: Supabase ➝ Replit PostgreSQL
+
+Repo: https://github.com/ms86100/airbus-project-hub
+
+Goal: Remove Supabase dependency and use Replit PostgreSQL with existing backend.
+Rule: Do not break or modify any existing business logic or features.
+
+1. Environment Configuration
+Frontend
+
+File: .env
+
+# Local backend
+VITE_API_URL=http://localhost:3001
+
+# Keep Supabase keys only if fallback is needed
+VITE_SUPABASE_URL=<supabase_url>
+VITE_SUPABASE_PUBLISHABLE_KEY=<supabase_key>
+
+Backend
+
+File: backend/.env
+
+# Database
+DATABASE_URL=postgresql://postgres:your_password@localhost:5432/project_management
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=project_management
+DB_USER=postgres
+DB_PASSWORD=your_password
+
+# Server
+PORT=3001
+NODE_ENV=development
+
+# JWT
+JWT_SECRET=your-super-secret-jwt-key
+JWT_EXPIRES_IN=7d
+REFRESH_TOKEN_SECRET=your-super-secret-refresh-token-key
+
+# CORS
+ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173,http://localhost:8080
+
+# Rate Limiting
+RATE_LIMIT_WINDOW_MS=900000
+RATE_LIMIT_MAX_REQUESTS=100
+
+# Admin
+ADMIN_EMAIL=admin@admin.com
+
+2. Files With Direct Supabase Imports
+Must Be Updated for Independence
+
+src/services/budgetApi.ts → switch from Supabase client to API client (src/services/api.ts).
+
+src/components/workspace/TeamCapacityTracker.tsx → remove Supabase import, replace with API client.
+
+src/hooks/useApiAuth.tsx → confirm it dynamically switches between Supabase and local backend based on VITE_API_URL.
+
+src/services/api.ts → ensure routing works:
+
+if VITE_API_URL is set → use backend API
+
+else → fallback to Supabase
+
+Can Be Left for Fallback / Read-Only
+
+src/integrations/supabase/client.ts (leave for fallback)
+
+src/integrations/supabase/types.ts (read-only type defs)
+
+3. Configuration Files to Keep / Align
+
+.env → main config
+
+.env.example → template
+
+.env.localhost → local backend config (use for Replit PostgreSQL)
+
+.env.cloud → Supabase config (for fallback, optional)
+
+.env.lovable → Lovable test config
+
+4. Documentation Files
+
+BACKEND_SETUP.md → backend setup guide
+
+MIGRATION_GUIDE.md → update to reflect Replit PostgreSQL usage
+
+backend/README.md → confirm backend instructions reference PostgreSQL
+
+5. Backend Files
+
+supabase/ folder → edge functions (ignore, not needed for local backend)
+
+supabase/config.toml → ignore (Supabase-specific)
+
+backend/migrations/*.sql → keep for database migrations in PostgreSQL
+
+6. Critical Migration Steps
+
+Start Local Backend
+
+cd backend
+npm install
+npm run dev  # runs on port 3001
+
+
+Database Setup
+
+Ensure Replit PostgreSQL has migrated schema.
+
+Backend connects using backend/.env.
+
+Authentication Migration
+
+src/hooks/useApiAuth.tsx dynamically switches auth method.
+
+With VITE_API_URL=http://localhost:3001, it must use local backend.
+
+API Service Migration
+
+src/services/api.ts handles environment detection:
+
+If VITE_API_URL is set → local backend
+
+If not → Supabase Edge Functions
+
+7. Verification Checklist
+
+✅ Backend
+
+Copy backend/.env.example → backend/.env
+
+Configure PostgreSQL credentials
+
+Run npm install
+
+Run npm run dev
+
+✅ Frontend
+
+Update .env with VITE_API_URL=http://localhost:3001
+
+Restart frontend dev server
+
+✅ Test Authentication
+
+Login with existing users
+
+Register new user
+
+Verify role-based access
+
+✅ Test Core Features
+
+Project creation / management
+
+Task & milestone operations
+
+Budget management
+
+Team capacity tracking
+
+All CRUD operations
+
+8. Key Benefits After Migration
+
+No Supabase dependency
+
+Local backend + PostgreSQL control
+
+API customization flexibility
+
+Cost savings (no Supabase cloud fees)
+
+Independence for scaling
+
+✅ Final Instruction for Replit
+
+Do not alter existing logic or UI.
+
+Update Supabase-dependent files (budgetApi.ts, TeamCapacityTracker.tsx, useApiAuth.tsx, api.ts).
+
+Apply environment updates and backend configs.
+
+Confirm migration success without extra explanations.
+
+Would you like me to also prepare a GitHub PR-style migration plan (with file-by-file diff instructions), so you can drop it straight into your repo’s issues or PR for Replit devs to follow?

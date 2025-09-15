@@ -1,0 +1,217 @@
+Use this repository  https://github.com/ms86100/airbus-project-hub  and configure it to work with our restored backend by switching from Supabase to Replit Database.
+Migration Guide: Supabase ➝ Replit PostgreSQL
+Repo: https://github.com/ms86100/airbus-project-hub
+ Goal: Replace Supabase with Replit PostgreSQL while keeping the existing backend.
+ Rule: Do not break or modify any existing business logic or UI features.
+1. Supabase Dependencies to Address
+Files with Direct Supabase Imports
+src/integrations/supabase/client.ts → main Supabase client (keep for fallback)
+
+
+src/integrations/supabase/types.ts → Supabase type definitions (read-only)
+
+
+src/services/budgetApi.ts → budget API service (must be updated)
+
+
+src/components/workspace/TeamCapacityTracker.tsx → direct Supabase import (must be updated)
+
+
+src/hooks/useApiAuth.tsx → authentication hook (update for dynamic switching)
+
+
+src/services/api.ts → main API service (update for dynamic switching)
+
+
+2. Environment Configuration
+Frontend (.env)
+# Local backend
+VITE_API_URL=http://localhost:3001
+
+# Keep these only if fallback is needed
+VITE_SUPABASE_URL=<supabase_url>
+VITE_SUPABASE_PUBLISHABLE_KEY=<supabase_key>
+
+Backend (backend/.env)
+# Database
+DATABASE_URL=postgresql://postgres:your_password@localhost:5432/project_management
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=project_management
+DB_USER=postgres
+DB_PASSWORD=your_password
+
+# Server
+PORT=3001
+NODE_ENV=development
+
+# JWT
+JWT_SECRET=your-super-secret-jwt-key
+JWT_EXPIRES_IN=7d
+REFRESH_TOKEN_SECRET=your-super-secret-refresh-token-key
+
+# CORS
+ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173,http://localhost:8080
+
+# Rate Limiting
+RATE_LIMIT_WINDOW_MS=900000
+RATE_LIMIT_MAX_REQUESTS=100
+
+# Admin
+ADMIN_EMAIL=admin@admin.com
+
+3. File Updates Required
+Must Be Updated
+src/services/budgetApi.ts → replace Supabase client with API client (src/services/api.ts)
+
+
+src/components/workspace/TeamCapacityTracker.tsx → remove Supabase import, replace with API client
+
+
+src/hooks/useApiAuth.tsx → ensure dynamic switch between Supabase and local backend based on VITE_API_URL
+
+
+src/services/api.ts → implement routing logic:
+
+
+If VITE_API_URL is set → use backend API
+
+
+Otherwise → fallback to Supabase
+
+
+Can Remain as Fallback / Read-Only
+src/integrations/supabase/client.ts
+
+
+src/integrations/supabase/types.ts
+
+
+
+4. Config & Documentation Files
+.env → main config
+
+
+.env.example → template
+
+
+.env.localhost → Replit PostgreSQL config
+
+
+.env.cloud → Supabase config (fallback, optional)
+
+
+.env.lovable → Lovable test config
+
+
+BACKEND_SETUP.md → backend setup instructions
+
+
+MIGRATION_GUIDE.md → update to reflect new setup
+
+
+backend/README.md → backend documentation
+
+
+5. Backend Files
+supabase/ → edge functions (ignore)
+
+
+supabase/config.toml → Supabase config (ignore)
+
+
+backend/migrations/*.sql → keep for PostgreSQL migrations
+
+
+6. Critical Migration Steps
+Start Backend
+
+ cd backend
+npm install
+npm run dev  # runs on port 3001
+
+
+Database Setup
+
+
+Ensure Replit PostgreSQL schema is migrated.
+
+
+Backend connects using backend/.env.
+
+
+Authentication
+
+
+src/hooks/useApiAuth.tsx should switch automatically:
+
+
+If VITE_API_URL=http://localhost:3001 → use local backend
+
+
+Else → Supabase
+
+
+API Service
+
+
+src/services/api.ts must detect environment:
+
+
+If VITE_API_URL set → local backend
+
+
+If not → Supabase
+
+
+7. Verification Checklist
+✅ Backend
+Copy backend/.env.example → backend/.env
+
+
+Configure PostgreSQL credentials
+
+
+Run npm install
+
+
+Run npm run dev
+
+
+✅ Frontend
+Update .env with VITE_API_URL=http://localhost:3001
+
+
+Restart frontend dev server
+
+
+7. Benefits After Migration
+Full independence from Supabase
+
+
+Direct control over PostgreSQL
+
+
+Backend flexibility for custom APIs
+
+
+Reduced costs (no Supabase cloud fees)
+
+
+Easier scaling and maintainability
+
+
+✅ Final Instruction for Replit
+Do not alter existing UI or business logic.
+
+
+Update Supabase-dependent files (budgetApi.ts, TeamCapacityTracker.tsx, useApiAuth.tsx, api.ts).
+
+
+Apply updated environment configs.
+
+
+Confirm migration success without extra explanations.
+
+
+

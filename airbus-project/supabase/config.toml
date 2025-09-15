@@ -1,0 +1,40 @@
+project_id = "knivoexfpvqohsvpsziq"
+
+[functions.auth-service]
+verify_jwt = false
+
+[functions.projects-service]
+verify_jwt = true
+
+[functions.access-service]
+verify_jwt = true
+
+[functions.capacity-service]
+verify_jwt = true
+
+[functions.retro-service]
+verify_jwt = true
+
+[functions.roadmap-service]
+verify_jwt = true
+
+[functions.backlog-service]
+verify_jwt = true
+
+[functions.stakeholder-service]
+verify_jwt = true
+
+[functions.audit-service]
+verify_jwt = true
+
+[functions.workspace-service]
+verify_jwt = true
+
+[functions.wizard-service]
+verify_jwt = true
+
+[functions.department-service]
+verify_jwt = true
+
+[functions.seed-demo]
+verify_jwt = true

@@ -37,12 +37,12 @@ export default function Migration() {
   const queryClient = useQueryClient();
 
   // Get current job data
-  const { data: job, isLoading: jobLoading } = useQuery<MigrationJob>({
+  const { data: job, isLoading: jobLoading } = useQuery({
     queryKey: ["/api/jobs", currentJobId],
     enabled: !!currentJobId,
-    refetchInterval: currentJobId && 
-      (!job || (job.status !== "completed" && job.status !== "failed")) ? 2000 : false,
-  });
+    refetchInterval: (data) => currentJobId && 
+      (!data || (data.status !== "completed" && data.status !== "failed")) ? 2000 : false,
+  }) as { data: MigrationJob | undefined; isLoading: boolean };
 
   // Upload mutation
   const uploadMutation = useMutation({
