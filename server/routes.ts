@@ -7,7 +7,7 @@ import { storage } from "./storage";
 import { BackupAnalyzer } from "./services/backup-analyzer";
 import { DatabaseRestorer } from "./services/database-restorer";
 import { DatabaseVerifier } from "./services/verification";
-import { insertMigrationJobSchema, projects, insertProjectSchema } from "@shared/schema";
+import { insertMigrationJobSchema, projects, insertProjectSchema, budgetTypeConfig, projectBudgets, budgetCategories, budgetSpending, budgetReceipts, insertBudgetCategorySchema, insertBudgetSpendingSchema } from "@shared/schema";
 import { neon } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
 import * as schema from '../shared/schema';
@@ -633,6 +633,137 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ 
         success: false,
         error: error instanceof Error ? error.message : "Failed to get project members" 
+      });
+    }
+  });
+
+  // Budget service - Get project budget
+  app.get("/api/budget-service/projects/:projectId/budget", async (req, res) => {
+    try {
+      const projectId = req.params.projectId;
+      
+      // Get project budget
+      const budget = await db.select().from(projectBudgets).where(eq(projectBudgets.project_id, projectId)).limit(1);
+      const projectBudget = budget.length > 0 ? budget[0] : null;
+      
+      // Get budget categories if budget exists
+      let categories = [];
+      if (projectBudget) {
+        const categoriesResult = await db.select().from(budgetCategories).where(eq(budgetCategories.project_budget_id, projectBudget.id));
+        categories = categoriesResult;
+      }
+      
+      // Get budget types
+      const budgetTypes = await db.select().from(budgetTypeConfig).where(eq(budgetTypeConfig.enabled, true));
+      
+      res.json({
+        success: true,
+        data: {
+          budget: projectBudget,
+          budgetTypes: budgetTypes
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to get project budget" 
+      });
+    }
+  });
+
+  // Budget service - Create or update budget category
+  app.post("/api/budget-service/projects/:projectId/categories", async (req, res) => {
+    try {
+      const projectId = req.params.projectId;
+      
+      // Ensure project budget exists
+      let budget = await db.select().from(projectBudgets).where(eq(projectBudgets.project_id, projectId)).limit(1);
+      if (budget.length === 0) {
+        // Create budget for project
+        const newBudget = await db.insert(projectBudgets).values({
+          project_id: projectId,
+          created_by: "6dc39f1e-2af3-4b78-8488-317d90f4f538"
+        }).returning();
+        budget = newBudget;
+      }
+      
+      // Create category
+      const categoryData = insertBudgetCategorySchema.parse({
+        ...req.body,
+        project_budget_id: budget[0].id,
+        created_by: "6dc39f1e-2af3-4b78-8488-317d90f4f538"
+      });
+      
+      const newCategory = await db.insert(budgetCategories).values(categoryData).returning();
+      
+      res.json({
+        success: true,
+        data: newCategory[0]
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to create budget category" 
+      });
+    }
+  });
+
+  // Budget service - Delete budget category
+  app.delete("/api/budget-service/projects/:projectId/categories/:categoryId", async (req, res) => {
+    try {
+      const categoryId = req.params.categoryId;
+      
+      await db.delete(budgetCategories).where(eq(budgetCategories.id, categoryId));
+      
+      res.json({
+        success: true,
+        data: { message: "Category deleted successfully" }
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to delete budget category" 
+      });
+    }
+  });
+
+  // Budget service - Create spending entry
+  app.post("/api/budget-service/projects/:projectId/spending", async (req, res) => {
+    try {
+      const spendingData = insertBudgetSpendingSchema.parse({
+        ...req.body,
+        created_by: "6dc39f1e-2af3-4b78-8488-317d90f4f538"
+      });
+      
+      const newSpending = await db.insert(budgetSpending).values(spendingData).returning();
+      
+      res.json({
+        success: true,
+        data: newSpending[0]
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to create spending entry" 
+      });
+    }
+  });
+
+  // Budget service - Delete spending entry
+  app.delete("/api/budget-service/projects/:projectId/spending/:spendingId", async (req, res) => {
+    try {
+      const spendingId = req.params.spendingId;
+      
+      await db.delete(budgetSpending).where(eq(budgetSpending.id, spendingId));
+      
+      res.json({
+        success: true,
+        data: { message: "Spending entry deleted successfully" }
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to delete spending entry" 
       });
     }
   });
