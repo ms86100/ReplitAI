@@ -180,13 +180,15 @@ export type InsertBudgetSpending = z.infer<typeof insertBudgetSpendingSchema>;
 export const tasks = pgTable("tasks", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   project_id: uuid("project_id").notNull(),
+  milestone_id: uuid("milestone_id"),
   title: text("title").notNull(),
   description: text("description"),
-  status: text("status").notNull().default("to-do"),
+  status: text("status").notNull().default("todo"),
   priority: text("priority").default("medium"),
-  assigned_to: uuid("assigned_to"),
+  owner_id: uuid("owner_id"),
   created_by: uuid("created_by").notNull(),
   due_date: date("due_date"),
+  department_id: uuid("department_id"),
   created_at: timestamp("created_at", { withTimezone: true }).notNull().default(sql`now()`),
   updated_at: timestamp("updated_at", { withTimezone: true }).notNull().default(sql`now()`)
 });
@@ -195,11 +197,12 @@ export const tasks = pgTable("tasks", {
 export const milestones = pgTable("milestones", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   project_id: uuid("project_id").notNull(),
-  title: text("title").notNull(),
+  name: text("name").notNull(),
   description: text("description"),
-  due_date: date("due_date"),
-  status: text("status").notNull().default("upcoming"),
+  due_date: date("due_date").notNull(),
+  status: text("status").notNull().default("planning"),
   created_by: uuid("created_by").notNull(),
+  department_id: uuid("department_id"),
   created_at: timestamp("created_at", { withTimezone: true }).notNull().default(sql`now()`),
   updated_at: timestamp("updated_at", { withTimezone: true }).notNull().default(sql`now()`)
 });
@@ -210,9 +213,10 @@ export const stakeholders = pgTable("stakeholders", {
   project_id: uuid("project_id").notNull(),
   name: text("name").notNull(),
   email: text("email"),
-  role: text("role"),
-  influence: text("influence").default("medium"),
-  interest: text("interest").default("medium"),
+  department: text("department"),
+  raci: text("raci"),
+  influence_level: text("influence_level"),
+  notes: text("notes"),
   created_by: uuid("created_by").notNull(),
   created_at: timestamp("created_at", { withTimezone: true }).notNull().default(sql`now()`),
   updated_at: timestamp("updated_at", { withTimezone: true }).notNull().default(sql`now()`)
@@ -222,14 +226,29 @@ export const stakeholders = pgTable("stakeholders", {
 export const riskRegister = pgTable("risk_register", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   project_id: uuid("project_id").notNull(),
-  risk_description: text("risk_description").notNull(),
-  category: text("category"),
-  probability: text("probability").default("medium"),
-  impact: text("impact").default("medium"),
-  mitigation_strategy: text("mitigation_strategy"),
-  owner: uuid("owner"),
-  status: text("status").notNull().default("open"),
   created_by: uuid("created_by").notNull(),
+  department_id: uuid("department_id"),
+  risk_code: text("risk_code").notNull(),
+  title: text("title").notNull(),
+  description: text("description"),
+  category: text("category"),
+  cause: text("cause"),
+  consequence: text("consequence"),
+  likelihood: integer("likelihood"),
+  impact: integer("impact"),
+  risk_score: integer("risk_score"),
+  owner: text("owner"),
+  response_strategy: text("response_strategy"),
+  mitigation_plan: text("mitigation_plan").array(),
+  contingency_plan: text("contingency_plan"),
+  status: text("status").default("open"),
+  identified_date: date("identified_date"),
+  last_updated: date("last_updated"),
+  next_review_date: date("next_review_date"),
+  residual_likelihood: integer("residual_likelihood"),
+  residual_impact: integer("residual_impact"),
+  residual_risk_score: integer("residual_risk_score"),
+  notes: text("notes"),
   created_at: timestamp("created_at", { withTimezone: true }).notNull().default(sql`now()`),
   updated_at: timestamp("updated_at", { withTimezone: true }).notNull().default(sql`now()`)
 });
@@ -268,3 +287,105 @@ export type InsertTask = z.infer<typeof insertTaskSchema>;
 export type InsertMilestone = z.infer<typeof insertMilestoneSchema>;
 export type InsertStakeholder = z.infer<typeof insertStakeholderSchema>;
 export type InsertRisk = z.infer<typeof insertRiskSchema>;
+
+// Project discussions table
+export const projectDiscussions = pgTable("project_discussions", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  project_id: uuid("project_id").notNull(),
+  meeting_title: text("meeting_title").notNull(),
+  meeting_date: date("meeting_date").notNull(),
+  summary_notes: text("summary_notes"),
+  attendees: jsonb("attendees").default(sql`'[]'::jsonb`),
+  created_by: uuid("created_by").notNull(),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().default(sql`now()`),
+  updated_at: timestamp("updated_at", { withTimezone: true }).notNull().default(sql`now()`)
+});
+
+// Discussion action items table
+export const discussionActionItems = pgTable("discussion_action_items", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  discussion_id: uuid("discussion_id").notNull(),
+  task_description: text("task_description").notNull(),
+  owner_id: uuid("owner_id"),
+  target_date: date("target_date"),
+  status: text("status").notNull().default("open"),
+  created_by: uuid("created_by").notNull(),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().default(sql`now()`),
+  updated_at: timestamp("updated_at", { withTimezone: true }).notNull().default(sql`now()`)
+});
+
+// Discussion change log table
+export const discussionChangeLog = pgTable("discussion_change_log", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  discussion_id: uuid("discussion_id"),
+  action_item_id: uuid("action_item_id"),
+  change_type: text("change_type").notNull(),
+  field_name: text("field_name"),
+  old_value: text("old_value"),
+  new_value: text("new_value"),
+  changed_by: uuid("changed_by").notNull(),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().default(sql`now()`)
+});
+
+// Project members table
+export const projectMembers = pgTable("project_members", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  project_id: uuid("project_id").notNull(),
+  user_id: uuid("user_id").notNull(),
+  role: text("role").default("member"),
+  joined_at: timestamp("joined_at", { withTimezone: true }).default(sql`now()`),
+  department_id: uuid("department_id")
+});
+
+// Task backlog table
+export const taskBacklog = pgTable("task_backlog", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: text("title").notNull(),
+  description: text("description"),
+  project_id: uuid("project_id").notNull(),
+  created_by: uuid("created_by").notNull(),
+  priority: text("priority").default("medium"),
+  status: text("status").notNull().default("backlog"),
+  owner_id: uuid("owner_id"),
+  target_date: date("target_date"),
+  source_type: text("source_type").default("manual"),
+  source_id: uuid("source_id"),
+  department_id: uuid("department_id"),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().default(sql`now()`),
+  updated_at: timestamp("updated_at", { withTimezone: true }).notNull().default(sql`now()`)
+});
+
+// Insert schemas for new tables
+export const insertProjectDiscussionSchema = createInsertSchema(projectDiscussions).omit({
+  id: true,
+  created_at: true,
+  updated_at: true,
+});
+
+export const insertDiscussionActionItemSchema = createInsertSchema(discussionActionItems).omit({
+  id: true,
+  created_at: true,
+  updated_at: true,
+});
+
+export const insertProjectMemberSchema = createInsertSchema(projectMembers).omit({
+  id: true,
+  joined_at: true,
+});
+
+export const insertTaskBacklogSchema = createInsertSchema(taskBacklog).omit({
+  id: true,
+  created_at: true,
+  updated_at: true,
+});
+
+// Types for new tables
+export type ProjectDiscussion = typeof projectDiscussions.$inferSelect;
+export type DiscussionActionItem = typeof discussionActionItems.$inferSelect;
+export type DiscussionChangeLog = typeof discussionChangeLog.$inferSelect;
+export type ProjectMember = typeof projectMembers.$inferSelect;
+export type TaskBacklog = typeof taskBacklog.$inferSelect;
+export type InsertProjectDiscussion = z.infer<typeof insertProjectDiscussionSchema>;
+export type InsertDiscussionActionItem = z.infer<typeof insertDiscussionActionItemSchema>;
+export type InsertProjectMember = z.infer<typeof insertProjectMemberSchema>;
+export type InsertTaskBacklog = z.infer<typeof insertTaskBacklogSchema>;

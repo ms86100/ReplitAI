@@ -64,6 +64,17 @@ export function ProjectWorkspaceContent({ projectId, currentModule = 'roadmap' }
           moduleName: 'task_backlog' as ModuleName, 
           requiredAccess: 'read' 
         };
+      case 'tasks':
+        return { 
+          component: (
+            <div>
+              <h1 className="text-2xl font-bold mb-6">Tasks & Milestones</h1>
+              <StatusManagementView projectId={projectId} />
+            </div>
+          ), 
+          moduleName: 'tasks_milestones' as ModuleName, 
+          requiredAccess: 'read' 
+        };
       case 'status':
         return { 
           component: (

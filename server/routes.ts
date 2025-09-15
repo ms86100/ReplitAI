@@ -7,7 +7,7 @@ import { storage } from "./storage";
 import { BackupAnalyzer } from "./services/backup-analyzer";
 import { DatabaseRestorer } from "./services/database-restorer";
 import { DatabaseVerifier } from "./services/verification";
-import { insertMigrationJobSchema, projects, insertProjectSchema, budgetTypeConfig, projectBudgets, budgetCategories, budgetSpending, budgetReceipts, insertBudgetCategorySchema, insertBudgetSpendingSchema, tasks, milestones, stakeholders, riskRegister, insertTaskSchema, insertMilestoneSchema, insertStakeholderSchema, insertRiskSchema } from "@shared/schema";
+import { insertMigrationJobSchema, projects, insertProjectSchema, budgetTypeConfig, projectBudgets, budgetCategories, budgetSpending, budgetReceipts, insertBudgetCategorySchema, insertBudgetSpendingSchema, tasks, milestones, stakeholders, riskRegister, projectDiscussions, discussionActionItems, discussionChangeLog, projectMembers, taskBacklog, insertTaskSchema, insertMilestoneSchema, insertStakeholderSchema, insertRiskSchema, insertProjectDiscussionSchema, insertDiscussionActionItemSchema, insertProjectMemberSchema, insertTaskBacklogSchema } from "@shared/schema";
 import { neon } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
 import * as schema from '../shared/schema';
@@ -562,14 +562,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Discussion service
   app.get("/api/discussion-service/projects/:projectId/discussions", async (req, res) => {
     try {
+      const projectId = req.params.projectId;
+      const discussions = await db.select().from(projectDiscussions).where(eq(projectDiscussions.project_id, projectId));
+      
       res.json({
         success: true,
-        data: []
+        data: discussions
       });
     } catch (error) {
       res.status(500).json({ 
         success: false,
         error: error instanceof Error ? error.message : "Failed to get discussions" 
+      });
+    }
+  });
+
+  // Create discussion
+  app.post("/api/discussion-service/projects/:projectId/discussions", async (req, res) => {
+    try {
+      const projectId = req.params.projectId;
+      const discussionData = insertProjectDiscussionSchema.parse({
+        ...req.body,
+        project_id: projectId,
+        created_by: "6dc39f1e-2af3-4b78-8488-317d90f4f538"
+      });
+      
+      const newDiscussion = await db.insert(projectDiscussions).values(discussionData).returning();
+      
+      res.json({
+        success: true,
+        data: newDiscussion[0]
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to create discussion" 
       });
     }
   });
@@ -684,12 +711,133 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Workspace service - Get action items
+  app.get("/api/workspace-service/projects/:projectId/action-items", async (req, res) => {
+    try {
+      const projectId = req.params.projectId;
+      const actionItems = await db.select().from(discussionActionItems)
+        .innerJoin(projectDiscussions, eq(discussionActionItems.discussion_id, projectDiscussions.id))
+        .where(eq(projectDiscussions.project_id, projectId));
+      
+      res.json({
+        success: true,
+        data: actionItems.map(item => item.discussion_action_items)
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to get action items" 
+      });
+    }
+  });
+
+  // Workspace service - Get discussions
+  app.get("/api/workspace-service/projects/:projectId/discussions", async (req, res) => {
+    try {
+      const projectId = req.params.projectId;
+      const discussions = await db.select().from(projectDiscussions).where(eq(projectDiscussions.project_id, projectId));
+      
+      res.json({
+        success: true,
+        data: discussions
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to get discussions" 
+      });
+    }
+  });
+
+  // Workspace service - Create discussion
+  app.post("/api/workspace-service/projects/:projectId/discussions", async (req, res) => {
+    try {
+      const projectId = req.params.projectId;
+      const discussionData = insertProjectDiscussionSchema.parse({
+        ...req.body,
+        project_id: projectId,
+        created_by: "6dc39f1e-2af3-4b78-8488-317d90f4f538"
+      });
+      
+      const newDiscussion = await db.insert(projectDiscussions).values(discussionData).returning();
+      
+      res.json({
+        success: true,
+        data: newDiscussion[0]
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to create discussion" 
+      });
+    }
+  });
+
+  // Workspace service - Get change log
+  app.get("/api/workspace-service/projects/:projectId/change-log", async (req, res) => {
+    try {
+      const projectId = req.params.projectId;
+      const changeLog = await db.select().from(discussionChangeLog)
+        .innerJoin(projectDiscussions, eq(discussionChangeLog.discussion_id, projectDiscussions.id))
+        .where(eq(projectDiscussions.project_id, projectId));
+      
+      res.json({
+        success: true,
+        data: changeLog.map(item => item.discussion_change_log)
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to get change log" 
+      });
+    }
+  });
+
+  // Workspace service - Get project members
+  app.get("/api/workspace-service/projects/:projectId/members", async (req, res) => {
+    try {
+      const projectId = req.params.projectId;
+      const members = await db.select().from(projectMembers).where(eq(projectMembers.project_id, projectId));
+      
+      res.json({
+        success: true,
+        data: members
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to get project members" 
+      });
+    }
+  });
+
   // Task backlog service
   app.get("/api/task-backlog-service/projects/:projectId/backlog", async (req, res) => {
     try {
+      const projectId = req.params.projectId;
+      const backlogItems = await db.select().from(taskBacklog).where(eq(taskBacklog.project_id, projectId));
+      
       res.json({
         success: true,
-        data: []
+        data: backlogItems
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to get backlog" 
+      });
+    }
+  });
+
+  // Backlog service (alias)
+  app.get("/api/backlog-service/projects/:projectId/backlog", async (req, res) => {
+    try {
+      const projectId = req.params.projectId;
+      const backlogItems = await db.select().from(taskBacklog).where(eq(taskBacklog.project_id, projectId));
+      
+      res.json({
+        success: true,
+        data: backlogItems
       });
     } catch (error) {
       res.status(500).json({ 
