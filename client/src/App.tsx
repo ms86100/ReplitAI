@@ -4,7 +4,18 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Router, Route } from "wouter";
 import { AuthProvider } from "@/hooks/useApiAuth";
-import Migration from "./pages/migration";
+import { ProjectProvider } from "@/hooks/useProjectContext";
+import Index from "./pages/Index";
+import Auth from "./pages/Auth";
+import NotFound from "./pages/NotFound";
+import ProjectWizard from "./components/ProjectWizard";
+import ProjectOverview from "./pages/ProjectOverview";
+import EditProject from "./pages/EditProject";
+import Projects from "./pages/Projects";
+import ProjectWorkspace from "./components/ProjectWorkspace";
+import Retrospectives from "./pages/Retrospectives";
+import TeamCapacity from "./pages/TeamCapacity";
+import AccessControl from "./pages/AccessControl";
 
 const queryClient = new QueryClient();
 
@@ -17,7 +28,18 @@ const App = () => (
             <Toaster />
             <Sonner />
             <Router>
-              <Route path="/" component={Migration} />
+              <ProjectProvider>
+                <Route path="/" component={Index} />
+                <Route path="/auth" component={Auth} />
+                <Route path="/create-project" component={ProjectWizard} />
+                <Route path="/projects" component={Projects} />
+                <Route path="/project/:id" component={ProjectOverview} />
+                <Route path="/project/:id/edit" component={EditProject} />
+                <Route path="/project/:id/:module" component={ProjectWorkspace} />
+                <Route path="/retrospectives" component={Retrospectives} />
+                <Route path="/team-capacity" component={TeamCapacity} />
+                <Route path="/access-control" component={AccessControl} />
+              </ProjectProvider>
             </Router>
           </div>
           <footer className="bg-card border-t py-4 text-center text-sm text-muted-foreground">
