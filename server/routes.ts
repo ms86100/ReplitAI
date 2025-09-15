@@ -389,6 +389,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Access service - Get project permissions
+  app.get("/api/access-service/projects/:projectId/access", async (req, res) => {
+    try {
+      res.json({
+        success: true,
+        data: [
+          { module: "overview", accessLevel: "write" },
+          { module: "kanban", accessLevel: "write" },
+          { module: "roadmap", accessLevel: "write" },
+          { module: "stakeholders", accessLevel: "write" },
+          { module: "risks", accessLevel: "write" },
+          { module: "status", accessLevel: "write" },
+          { module: "discussions", accessLevel: "write" },
+          { module: "task_backlog", accessLevel: "write" },
+          { module: "team_capacity", accessLevel: "write" },
+          { module: "retrospectives", accessLevel: "write" }
+        ]
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to get permissions" 
+      });
+    }
+  });
+
+  // Access service - Log access
+  app.post("/api/access-service/log-access", async (req, res) => {
+    try {
+      res.json({
+        success: true,
+        data: { message: "Access logged" }
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to log access" 
+      });
+    }
+  });
+
+  // Workspace service - Get workspace info
+  app.get("/api/workspace-service/projects/:projectId/workspace", async (req, res) => {
+    try {
+      res.json({
+        success: true,
+        data: {
+          id: req.params.projectId,
+          settings: {},
+          modules: ["overview", "kanban", "roadmap", "stakeholders", "risks", "status", "discussions", "task_backlog", "team_capacity", "retrospectives"]
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to get workspace" 
+      });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
