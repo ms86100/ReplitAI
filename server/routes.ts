@@ -792,6 +792,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update risk
+  app.put("/api/workspace-service/projects/:projectId/risks/:riskId", async (req, res) => {
+    try {
+      const riskId = req.params.riskId;
+      const updateData = {
+        ...req.body,
+        updated_at: new Date()
+      };
+      
+      const updatedRisk = await db.update(riskRegister)
+        .set(updateData)
+        .where(eq(riskRegister.id, riskId))
+        .returning();
+        
+      if (updatedRisk.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: "Risk not found"
+        });
+      }
+      
+      res.json({
+        success: true,
+        data: updatedRisk[0]
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to update risk" 
+      });
+    }
+  });
+
+  // Delete risk
+  app.delete("/api/workspace-service/projects/:projectId/risks/:riskId", async (req, res) => {
+    try {
+      const riskId = req.params.riskId;
+      
+      const deletedRisk = await db.delete(riskRegister)
+        .where(eq(riskRegister.id, riskId))
+        .returning();
+        
+      if (deletedRisk.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: "Risk not found"
+        });
+      }
+      
+      res.json({
+        success: true,
+        data: { message: "Risk deleted successfully" }
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to delete risk" 
+      });
+    }
+  });
+
   // Workspace service - Get action items
   app.get("/api/workspace-service/projects/:projectId/action-items", async (req, res) => {
     try {

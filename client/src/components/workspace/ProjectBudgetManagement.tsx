@@ -122,7 +122,7 @@ export function ProjectBudgetManagement({ projectId }: ProjectBudgetManagementPr
       setLoading(true);
       const result = await budgetApi.getProjectBudget(projectId);
 
-      const budgetData = result.data?.budget || result.data;
+      const budgetData = result.data?.budget || null;
       setBudget(budgetData);
       setBudgetTypes(result.data?.budgetTypes || []);
       
@@ -389,13 +389,13 @@ export function ProjectBudgetManagement({ projectId }: ProjectBudgetManagementPr
       
       
       if (itemToDelete.type === 'category') {
-        await budgetApi.deleteBudgetCategory(itemToDelete.id);
+        await budgetApi.deleteBudgetCategory(projectId, itemToDelete.id);
         toast({
           title: "Success",
           description: "Budget category deleted successfully",
         });
       } else {
-        await budgetApi.deleteSpendingEntry(itemToDelete.id);
+        await budgetApi.deleteSpendingEntry(projectId, itemToDelete.id);
         toast({
           title: "Success", 
           description: "Spending entry deleted successfully",
