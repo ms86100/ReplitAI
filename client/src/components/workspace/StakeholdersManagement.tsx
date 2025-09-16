@@ -74,14 +74,11 @@ export function StakeholdersManagement({ projectId }: StakeholdersManagementProp
       setLoading(true);
       const response = await apiClient.getStakeholders(projectId);
       
-      console.log('📋 Stakeholder API response:', response);
-      
       if (!response.success) {
         throw new Error(response.error || 'Failed to fetch stakeholders');
       }
       
       const stakeholderData = Array.isArray(response.data) ? response.data : [];
-      console.log('📋 Setting stakeholders:', stakeholderData);
       setStakeholders(stakeholderData);
     } catch (error: any) {
       console.error('📋 Stakeholder fetch error:', error);
@@ -204,9 +201,6 @@ export function StakeholdersManagement({ projectId }: StakeholdersManagementProp
     stakeholder.department?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  console.log('📋 Stakeholders array:', stakeholders);
-  console.log('📋 Filtered stakeholders:', filteredStakeholders);
-  console.log('📋 Search term:', searchTerm);
 
   const getRaciBadgeVariant = (raci?: string) => {
     switch (raci) {
