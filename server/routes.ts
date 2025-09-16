@@ -7,7 +7,7 @@ import { storage } from "./storage";
 import { BackupAnalyzer } from "./services/backup-analyzer";
 import { DatabaseRestorer } from "./services/database-restorer";
 import { DatabaseVerifier } from "./services/verification";
-import { insertMigrationJobSchema, projects, insertProjectSchema, budgetTypeConfig, projectBudgets, budgetCategories, budgetSpending, budgetReceipts, insertBudgetCategorySchema, insertBudgetSpendingSchema, tasks, milestones, stakeholders, riskRegister, projectDiscussions, discussionActionItems, discussionChangeLog, projectMembers, taskBacklog, teams, teamMembers, teamCapacityIterations, teamCapacityMembers, iterationWeeks, insertTaskSchema, insertMilestoneSchema, insertStakeholderSchema, insertRiskSchema, insertProjectDiscussionSchema, insertDiscussionActionItemSchema, insertProjectMemberSchema, insertTaskBacklogSchema, insertTeamSchema, insertTeamMemberSchema, insertTeamCapacityIterationSchema, insertTeamCapacityMemberSchema, insertIterationWeekSchema } from "@shared/schema";
+import { insertMigrationJobSchema, projects, insertProjectSchema, budgetTypeConfig, projectBudgets, budgetCategories, budgetSpending, budgetReceipts, insertBudgetCategorySchema, insertBudgetSpendingSchema, tasks, milestones, stakeholders, riskRegister, projectDiscussions, discussionActionItems, discussionChangeLog, projectMembers, taskBacklog, teams, teamMembers, teamCapacityIterations, teamCapacityMembers, iterationWeeks, weeklyAvailability, insertTaskSchema, insertMilestoneSchema, insertStakeholderSchema, insertRiskSchema, insertProjectDiscussionSchema, insertDiscussionActionItemSchema, insertProjectMemberSchema, insertTaskBacklogSchema, insertTeamSchema, insertTeamMemberSchema, insertTeamCapacityIterationSchema, insertTeamCapacityMemberSchema, insertIterationWeekSchema, insertWeeklyAvailabilitySchema } from "@shared/schema";
 import { neon } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
 import * as schema from '../shared/schema';
@@ -1548,12 +1548,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // For now, just return success since we don't have the table structure yet
+      let saved = 0;
+      for (const item of availability) {
+        try {
+          const availabilityData = {
+            iteration_id: iterationId,
+            iteration_week_id: item.iteration_week_id,
+            team_member_id: item.team_member_id,
+            availability_percent: item.availability_percent || 100,
+            leaves: item.leaves || 0,
+            calculated_days_present: item.calculated_days_present || 5,
+            calculated_days_total: item.calculated_days_total || 5,
+            effective_capacity: item.effective_capacity?.toString() || "5.00",
+            notes: item.notes || null
+          };
+
+          await db.insert(weeklyAvailability)
+            .values(availabilityData)
+            .onConflictDoUpdate({
+              target: [weeklyAvailability.iteration_week_id, weeklyAvailability.team_member_id],
+              set: {
+                availability_percent: availabilityData.availability_percent,
+                leaves: availabilityData.leaves,
+                calculated_days_present: availabilityData.calculated_days_present,
+                calculated_days_total: availabilityData.calculated_days_total,
+                effective_capacity: availabilityData.effective_capacity,
+                notes: availabilityData.notes,
+                updated_at: new Date()
+              }
+            });
+          saved++;
+        } catch (error) {
+          console.error('Error saving individual availability item:', error, item);
+        }
+      }
+      
       res.json({
         success: true,
         data: {
           message: 'Availability saved successfully',
-          updated: availability.length
+          updated: saved
         }
       });
     } catch (error) {
@@ -1561,6 +1595,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ 
         success: false,
         error: error instanceof Error ? error.message : "Failed to save weekly availability" 
+      });
+    }
+  });
+
+  // Get weekly availability
+  app.get("/api/capacity-service/iterations/:iterationId/availability", async (req, res) => {
+    try {
+      const { iterationId } = req.params;
+      
+      const availability = await db.select().from(weeklyAvailability)
+        .where(eq(weeklyAvailability.iteration_id, iterationId));
+      
+      res.json({
+        success: true,
+        data: availability
+      });
+    } catch (error) {
+      console.error('Error fetching weekly availability:', error);
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to fetch weekly availability" 
       });
     }
   });

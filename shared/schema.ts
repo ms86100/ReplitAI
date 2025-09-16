@@ -404,6 +404,23 @@ export const iterationWeeks = pgTable("iteration_weeks", {
   uniqueIterationWeek: unique().on(table.iteration_id, table.week_index)
 }));
 
+export const weeklyAvailability = pgTable("weekly_availability", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  iteration_id: uuid("iteration_id").notNull().references(() => teamCapacityIterations.id, { onDelete: 'cascade' }),
+  iteration_week_id: uuid("iteration_week_id").notNull().references(() => iterationWeeks.id, { onDelete: 'cascade' }),
+  team_member_id: text("team_member_id").notNull(),
+  availability_percent: integer("availability_percent").notNull().default(100),
+  leaves: integer("leaves").notNull().default(0),
+  calculated_days_present: integer("calculated_days_present").notNull().default(5),
+  calculated_days_total: integer("calculated_days_total").notNull().default(5),
+  effective_capacity: numeric("effective_capacity", { precision: 5, scale: 2 }).notNull().default("5.00"),
+  notes: text("notes"),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().default(sql`now()`),
+  updated_at: timestamp("updated_at", { withTimezone: true }).notNull().default(sql`now()`)
+}, (table) => ({
+  uniqueAvailability: unique().on(table.iteration_week_id, table.team_member_id)
+}));
+
 export const teamCapacityMembers = pgTable("team_capacity_members", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   iteration_id: uuid("iteration_id").notNull(),
@@ -468,6 +485,12 @@ export const insertIterationWeekSchema = createInsertSchema(iterationWeeks).omit
   updated_at: true,
 });
 
+export const insertWeeklyAvailabilitySchema = createInsertSchema(weeklyAvailability).omit({
+  id: true,
+  created_at: true,
+  updated_at: true,
+});
+
 export const insertTeamCapacityMemberSchema = createInsertSchema(teamCapacityMembers).omit({
   id: true,
   created_at: true,
@@ -493,4 +516,6 @@ export type InsertTeamMember = z.infer<typeof insertTeamMemberSchema>;
 export type InsertTeamCapacityIteration = z.infer<typeof insertTeamCapacityIterationSchema>;
 export type InsertIterationWeek = z.infer<typeof insertIterationWeekSchema>;
 export type SelectIterationWeek = typeof iterationWeeks.$inferSelect;
+export type InsertWeeklyAvailability = z.infer<typeof insertWeeklyAvailabilitySchema>;
+export type SelectWeeklyAvailability = typeof weeklyAvailability.$inferSelect;
 export type InsertTeamCapacityMember = z.infer<typeof insertTeamCapacityMemberSchema>;
