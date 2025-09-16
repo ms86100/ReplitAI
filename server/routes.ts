@@ -1814,13 +1814,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Get project budget
       const budget = await db.select().from(projectBudgets).where(eq(projectBudgets.project_id, projectId)).limit(1);
-      const projectBudget = budget.length > 0 ? budget[0] : null;
+      let projectBudget = budget.length > 0 ? budget[0] : null;
       
       // Get budget categories if budget exists
       let categories = [];
       if (projectBudget) {
         const categoriesResult = await db.select().from(budgetCategories).where(eq(budgetCategories.project_budget_id, projectBudget.id));
         categories = categoriesResult;
+        
+        // Attach categories to budget object
+        projectBudget = {
+          ...projectBudget,
+          budget_categories: categories
+        };
+      } else {
+        // If no budget exists, create empty structure with categories
+        projectBudget = {
+          budget_categories: []
+        };
       }
       
       // Get budget types
@@ -1830,7 +1841,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         success: true,
         data: {
           budget: projectBudget,
-          budgetTypes: budgetTypes
+          budgetTypes: budgetTypes,
+          categories: categories,
+          spendingEntries: []
         }
       });
     } catch (error) {

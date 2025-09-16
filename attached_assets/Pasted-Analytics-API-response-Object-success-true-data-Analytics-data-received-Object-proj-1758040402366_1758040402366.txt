@@ -1,0 +1,28 @@
+Analytics API response: 
+Object {success: true, data: {…}}
+Analytics data received: 
+Object {projectHealth: {…}, budgetAnalytics: {…}, teamPerformance: {…}, taskAnalytics: {…}, riskAnalysis: {…}, …}
+❌ DETAILED Budget fetch error: 
+Object {error: TypeError, message: "Cannot read properties of undefined (reading 'budget')", stack: "TypeError: Cannot read properties of undefined (reading 'budget')↵    at fetchBudgetData…", projectId: "636c6d59-2c07-4e27-a789-9dd4f9db93d1"}
+
+Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+Fetching analytics for project: 636c6d59-2c07-4e27-a789-9dd4f9db93d1
+Analytics API response: 
+Object {success: true, data: {…}}
+Analytics data received: 
+Object {projectHealth: {…}, budgetAnalytics: {…}, teamPerformance: {…}, taskAnalytics: {…}, riskAnalysis: {…}, …}
+❌ Error fetching retrospectives: Empty response
+at t.value (https://d258915e-7d36-403a-978a-75cbf855689b-00-j3m07eq79i6p.worf.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:17465)
+at new t (https://d258915e-7d36-403a-978a-75cbf855689b-00-j3m07eq79i6p.worf.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:12630)
+at t.value (https://d258915e-7d36-403a-978a-75cbf855689b-00-j3m07eq79i6p.worf.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:32766)
+at https://d258915e-7d36-403a-978a-75cbf855689b-00-j3m07eq79i6p.worf.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:34400
+Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+Error creating retrospective: 
+Error {}
+
+at t.value (https://d258915e-7d36-403a-978a-75cbf855689b-00-j3m07eq79i6p.worf.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:17465)
+at new t (https://d258915e-7d36-403a-978a-75cbf855689b-00-j3m07eq79i6p.worf.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:12630)
+at t.value (https://d258915e-7d36-403a-978a-75cbf855689b-00-j3m07eq79i6p.worf.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:32766)
+at https://d258915e-7d36-403a-978a-75cbf855689b-00-j3m07eq79i6p.worf.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:34400
+❌ DETAILED Budget fetch error: 
+Object {error: TypeError, message: "Cannot read properties of undefined (reading 'budget')", stack: "TypeError: Cannot read properties of undefined (reading 'budget')↵    at fetchBudgetData…", projectId: "636c6d59-2c07-4e27-a789-9dd4f9db93d1"}
