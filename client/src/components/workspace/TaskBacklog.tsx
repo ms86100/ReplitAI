@@ -86,7 +86,7 @@ export function TaskBacklog({ projectId }: TaskBacklogProps) {
       if (!response.success) {
         throw new Error(response.error || 'Failed to fetch backlog items');
       }
-      setBacklogItems(response.data.items || []);
+      setBacklogItems(response.data || []);
     } catch (error) {
       console.error('Error fetching backlog items:', error);
     }
@@ -98,7 +98,7 @@ export function TaskBacklog({ projectId }: TaskBacklogProps) {
       if (!response.success) {
         throw new Error(response.error || 'Failed to fetch stakeholders');
       }
-      setStakeholders(response.data.stakeholders || []);
+      setStakeholders(response.data || []);
     } catch (error) {
       console.error('Error fetching stakeholders:', error);
     }
