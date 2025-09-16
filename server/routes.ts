@@ -1055,6 +1055,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Backlog service - Move backlog item to milestone
+  app.post("/api/backlog-service/projects/:projectId/backlog/:itemId/move", async (req, res) => {
+    try {
+      const projectId = req.params.projectId;
+      const itemId = req.params.itemId;
+      const { milestoneId } = req.body;
+      
+      if (!milestoneId) {
+        return res.status(400).json({
+          success: false,
+          error: "Milestone ID is required"
+        });
+      }
+      
+      // Get the backlog item and validate ownership
+      const backlogItem = await db.select().from(taskBacklog)
+        .where(eq(taskBacklog.id, itemId).and(eq(taskBacklog.project_id, projectId)));
+      
+      if (backlogItem.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: "Backlog item not found or not accessible"
+        });
+      }
+      
+      // Validate milestone exists and belongs to the project
+      const milestone = await db.select().from(milestones)
+        .where(eq(milestones.id, milestoneId).and(eq(milestones.project_id, projectId)));
+      
+      if (milestone.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: "Milestone not found or not accessible"
+        });
+      }
+      
+      // Create a new task from the backlog item with proper validation
+      const taskData = {
+        project_id: projectId,
+        milestone_id: milestoneId,
+        title: backlogItem[0].title,
+        description: backlogItem[0].description || null,
+        priority: backlogItem[0].priority || 'medium',
+        status: 'todo',
+        owner_id: backlogItem[0].owner_id || null,
+        due_date: backlogItem[0].target_date || null,
+        created_by: "6dc39f1e-2af3-4b78-8488-317d90f4f538"
+      };
+      
+      const newTask = await db.insert(tasks).values(taskData).returning();
+      
+      // Update backlog item status to 'done'
+      await db.update(taskBacklog)
+        .set({ status: 'done' })
+        .where(eq(taskBacklog.id, itemId));
+      
+      res.json({
+        success: true,
+        data: {
+          message: "Backlog item moved to milestone successfully",
+          task: newTask[0]
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to move backlog item" 
+      });
+    }
+  });
+
   // Roadmap service
   app.get("/api/roadmap-service/projects/:projectId/roadmap", async (req, res) => {
     try {

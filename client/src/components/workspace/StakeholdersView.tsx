@@ -67,8 +67,8 @@ export function StakeholdersView({ projectId }: StakeholdersViewProps) {
     try {
       setLoading(true);
       const response = await apiClient.getStakeholders(projectId);
-      if (response.success && response.data?.stakeholders) {
-        setStakeholders(response.data.stakeholders);
+      if (response.success && response.data) {
+        setStakeholders(Array.isArray(response.data) ? response.data : []);
       }
     } catch (error: any) {
       toast({
