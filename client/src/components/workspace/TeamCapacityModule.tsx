@@ -326,7 +326,7 @@ export const TeamCapacityModule: React.FC<TeamCapacityModuleProps> = ({ projectI
                                 team_name: team.name,
                                 start_date: new Date().toISOString().split('T')[0],
                                 end_date: new Date(Date.now() + 21 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-                                weeks_count: 3,
+                                weeks_count: Math.ceil((new Date(Date.now() + 21 * 24 * 60 * 60 * 1000).getTime() - new Date().getTime()) / (7 * 24 * 60 * 60 * 1000)),
                                 created_at: new Date().toISOString(),
                                 // Store the real iteration ID for API calls if it exists
                                 hasRealIteration: !!teamIteration,
@@ -367,7 +367,7 @@ export const TeamCapacityModule: React.FC<TeamCapacityModuleProps> = ({ projectI
                                  team_name: team.name,
                                  start_date: '2025-09-04',
                                  end_date: '2025-09-25',
-                                 weeks_count: 3,
+                                 weeks_count: Math.ceil((new Date(Date.now() + 21 * 24 * 60 * 60 * 1000).getTime() - new Date().getTime()) / (7 * 24 * 60 * 60 * 1000)),
                                  created_at: new Date().toISOString()
                                };
                                

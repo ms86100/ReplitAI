@@ -400,7 +400,9 @@ export const iterationWeeks = pgTable("iteration_weeks", {
   week_end: date("week_end").notNull(),
   created_at: timestamp("created_at", { withTimezone: true }).notNull().default(sql`now()`),
   updated_at: timestamp("updated_at", { withTimezone: true }).notNull().default(sql`now()`)
-});
+}, (table) => ({
+  uniqueIterationWeek: unique().on(table.iteration_id, table.week_index)
+}));
 
 export const teamCapacityMembers = pgTable("team_capacity_members", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
