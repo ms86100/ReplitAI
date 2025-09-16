@@ -426,7 +426,7 @@ class ApiClient {
 
   // Backlog Service Methods
   async getBacklog(projectId: string): Promise<ApiResponse<{ projectId: string; items: any[] }>> {
-    return this.makeRequest(`/api/backlog-service/projects/${projectId}/backlog`, { method: 'GET' });
+    return this.makeRequest(`/backlog-service/projects/${projectId}/backlog`, { method: 'GET' });
   }
 
   async createBacklogItem(projectId: string, data: {
@@ -438,7 +438,7 @@ class ApiClient {
     targetDate?: string;
     sourceType?: string;
   }): Promise<ApiResponse<{ message: string; item: any }>> {
-    return this.makeRequest(`/api/backlog-service/projects/${projectId}/backlog`, {
+    return this.makeRequest(`/backlog-service/projects/${projectId}/backlog`, {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -452,45 +452,45 @@ class ApiClient {
     ownerId?: string;
     targetDate?: string;
   }): Promise<ApiResponse<{ message: string; item: any }>> {
-    return this.makeRequest(`/api/backlog-service/projects/${projectId}/backlog/${itemId}`, {
+    return this.makeRequest(`/backlog-service/projects/${projectId}/backlog/${itemId}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
   }
 
   async deleteBacklogItem(projectId: string, itemId: string): Promise<ApiResponse<{ message: string }>> {
-    return this.makeRequest(`/api/backlog-service/projects/${projectId}/backlog/${itemId}`, {
+    return this.makeRequest(`/backlog-service/projects/${projectId}/backlog/${itemId}`, {
       method: 'DELETE',
     });
   }
 
   async moveBacklogToMilestone(projectId: string, backlogItemId: string, milestoneId: string): Promise<ApiResponse<{ message: string; task: any }>> {
-    return this.makeRequest(`/api/backlog-service/projects/${projectId}/backlog/${backlogItemId}/move`, {
+    return this.makeRequest(`/backlog-service/projects/${projectId}/backlog/${backlogItemId}/move`, {
       method: 'POST',
       body: JSON.stringify({ milestoneId }),
     });
   }
   // Stakeholders Service Methods
   async getStakeholders(projectId: string): Promise<ApiResponse<any[]>> {
-    return this.makeRequest(`/api/stakeholder-service/projects/${projectId}/stakeholders`, { method: 'GET' });
+    return this.makeRequest(`/stakeholder-service/projects/${projectId}/stakeholders`, { method: 'GET' });
   }
 
   async createStakeholder(projectId: string, data: { name: string; email?: string; department?: string; raci?: string; influence_level?: string; notes?: string; }): Promise<ApiResponse<{ message: string; stakeholder: any }>> {
-    return this.makeRequest(`/api/stakeholder-service/projects/${projectId}/stakeholders`, {
+    return this.makeRequest(`/stakeholder-service/projects/${projectId}/stakeholders`, {
       method: 'POST',
       body: JSON.stringify(data),
     });
   }
 
   async updateStakeholder(projectId: string, stakeholderId: string, data: { name?: string; email?: string; department?: string; raci?: string; influence_level?: string; notes?: string; }): Promise<ApiResponse<{ message: string; stakeholder: any }>> {
-    return this.makeRequest(`/api/stakeholder-service/projects/${projectId}/stakeholders/${stakeholderId}`, {
+    return this.makeRequest(`/stakeholder-service/projects/${projectId}/stakeholders/${stakeholderId}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
   }
 
   async deleteStakeholder(projectId: string, stakeholderId: string): Promise<ApiResponse<{ message: string }>> {
-    return this.makeRequest(`/api/stakeholder-service/projects/${projectId}/stakeholders/${stakeholderId}`, {
+    return this.makeRequest(`/stakeholder-service/projects/${projectId}/stakeholders/${stakeholderId}`, {
       method: 'DELETE',
     });
   }
@@ -776,7 +776,7 @@ class ApiClient {
         if (!data.taskAnalytics.tasksByOwner || data.taskAnalytics.tasksByOwner.length === 0) {
           try {
             const tasksResponse = await this.makeRequest(`/workspace-service/projects/${projectId}/tasks`, { method: 'GET' });
-            const stakeholdersResponse = await this.makeRequest(`/api/stakeholder-service/projects/${projectId}/stakeholders`, { method: 'GET' });
+            const stakeholdersResponse = await this.makeRequest(`/stakeholder-service/projects/${projectId}/stakeholders`, { method: 'GET' });
             
             if (tasksResponse.success && stakeholdersResponse.success) {
               const tasks = (tasksResponse.data as any)?.tasks || [];
