@@ -41,9 +41,10 @@ export function AddTaskFromBacklogDialog({ milestoneId, projectId, onTaskAdded }
   const fetchBacklogItems = async () => {
     try {
       const response = await apiClient.getBacklog(projectId);
-      if (response.success && response.data?.items) {
+      if (response.success && response.data) {
         // Filter out items that have been moved to tasks (status: 'done')
-        const availableItems = response.data.items.filter((item: BacklogItem) => item.status !== 'done');
+        const items = Array.isArray(response.data) ? response.data : response.data.items || [];
+        const availableItems = items.filter((item: BacklogItem) => item.status !== 'done');
         setBacklogItems(availableItems);
       }
     } catch (error) {
