@@ -355,6 +355,59 @@ export const taskBacklog = pgTable("task_backlog", {
   updated_at: timestamp("updated_at", { withTimezone: true }).notNull().default(sql`now()`)
 });
 
+// Teams and Team Capacity Tables
+export const teams = pgTable("teams", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  project_id: uuid("project_id").notNull(),
+  name: text("name").notNull(),
+  description: text("description"),
+  created_by: uuid("created_by").notNull(),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().default(sql`now()`),
+  updated_at: timestamp("updated_at", { withTimezone: true }).notNull().default(sql`now()`)
+});
+
+export const teamMembers = pgTable("team_members", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  team_id: uuid("team_id").notNull(),
+  display_name: text("display_name").notNull(),
+  role: text("role"),
+  email: text("email"),
+  work_mode: text("work_mode").notNull().default("office"),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().default(sql`now()`),
+  updated_at: timestamp("updated_at", { withTimezone: true }).notNull().default(sql`now()`)
+});
+
+export const teamCapacityIterations = pgTable("team_capacity_iterations", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  project_id: uuid("project_id").notNull(),
+  name: text("name").notNull(),
+  start_date: date("start_date").notNull(),
+  end_date: date("end_date").notNull(),
+  working_days: integer("working_days").notNull(),
+  status: text("status").notNull().default("planning"),
+  team_id: uuid("team_id"),
+  committed_story_points: integer("committed_story_points"),
+  created_by: uuid("created_by").notNull(),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().default(sql`now()`),
+  updated_at: timestamp("updated_at", { withTimezone: true }).notNull().default(sql`now()`)
+});
+
+export const teamCapacityMembers = pgTable("team_capacity_members", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  iteration_id: uuid("iteration_id").notNull(),
+  member_name: text("member_name").notNull(),
+  role: text("role"),
+  work_mode: text("work_mode").notNull(),
+  availability_percent: integer("availability_percent").notNull().default(100),
+  leaves: integer("leaves").notNull().default(0),
+  effective_capacity_days: numeric("effective_capacity_days", { precision: 5, scale: 2 }),
+  stakeholder_id: uuid("stakeholder_id"),
+  team_id: uuid("team_id"),
+  created_by: uuid("created_by").notNull(),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().default(sql`now()`),
+  updated_at: timestamp("updated_at", { withTimezone: true }).notNull().default(sql`now()`)
+});
+
 // Insert schemas for new tables
 export const insertProjectDiscussionSchema = createInsertSchema(projectDiscussions).omit({
   id: true,
@@ -379,13 +432,45 @@ export const insertTaskBacklogSchema = createInsertSchema(taskBacklog).omit({
   updated_at: true,
 });
 
+export const insertTeamSchema = createInsertSchema(teams).omit({
+  id: true,
+  created_at: true,
+  updated_at: true,
+});
+
+export const insertTeamMemberSchema = createInsertSchema(teamMembers).omit({
+  id: true,
+  created_at: true,
+  updated_at: true,
+});
+
+export const insertTeamCapacityIterationSchema = createInsertSchema(teamCapacityIterations).omit({
+  id: true,
+  created_at: true,
+  updated_at: true,
+});
+
+export const insertTeamCapacityMemberSchema = createInsertSchema(teamCapacityMembers).omit({
+  id: true,
+  created_at: true,
+  updated_at: true,
+});
+
 // Types for new tables
 export type ProjectDiscussion = typeof projectDiscussions.$inferSelect;
 export type DiscussionActionItem = typeof discussionActionItems.$inferSelect;
 export type DiscussionChangeLog = typeof discussionChangeLog.$inferSelect;
 export type ProjectMember = typeof projectMembers.$inferSelect;
 export type TaskBacklog = typeof taskBacklog.$inferSelect;
+export type Team = typeof teams.$inferSelect;
+export type TeamMember = typeof teamMembers.$inferSelect;
+export type TeamCapacityIteration = typeof teamCapacityIterations.$inferSelect;
+export type TeamCapacityMember = typeof teamCapacityMembers.$inferSelect;
 export type InsertProjectDiscussion = z.infer<typeof insertProjectDiscussionSchema>;
 export type InsertDiscussionActionItem = z.infer<typeof insertDiscussionActionItemSchema>;
 export type InsertProjectMember = z.infer<typeof insertProjectMemberSchema>;
 export type InsertTaskBacklog = z.infer<typeof insertTaskBacklogSchema>;
+export type InsertTeam = z.infer<typeof insertTeamSchema>;
+export type InsertTeamMember = z.infer<typeof insertTeamMemberSchema>;
+export type InsertTeamCapacityIteration = z.infer<typeof insertTeamCapacityIterationSchema>;
+export type InsertTeamCapacityMember = z.infer<typeof insertTeamCapacityMemberSchema>;

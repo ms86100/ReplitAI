@@ -1018,19 +1018,13 @@ class ApiClient {
   // ========================
 
   async getTeams(projectId: string): Promise<ApiResponse> {
-    const ep = this.resolveEndpoint(
-      `/capacity-service/projects/${projectId}/teams`,
-      `/projects/${projectId}/teams`
-    );
-    return this.makeRequest(ep, { method: 'GET' });
+    // Use the working teams endpoint directly
+    return this.makeRequest(`/projects/${projectId}/teams`, { method: 'GET' });
   }
 
   async createTeam(projectId: string, teamData: any): Promise<ApiResponse> {
-    const ep = this.resolveEndpoint(
-      `/capacity-service/projects/${projectId}/teams`,
-      `/projects/${projectId}/teams`
-    );
-    return this.makeRequest(ep, {
+    // Use the working teams endpoint directly
+    return this.makeRequest(`/projects/${projectId}/teams`, {
       method: 'POST',
       body: JSON.stringify(teamData),
     });

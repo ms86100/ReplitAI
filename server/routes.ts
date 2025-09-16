@@ -7,7 +7,7 @@ import { storage } from "./storage";
 import { BackupAnalyzer } from "./services/backup-analyzer";
 import { DatabaseRestorer } from "./services/database-restorer";
 import { DatabaseVerifier } from "./services/verification";
-import { insertMigrationJobSchema, projects, insertProjectSchema, budgetTypeConfig, projectBudgets, budgetCategories, budgetSpending, budgetReceipts, insertBudgetCategorySchema, insertBudgetSpendingSchema, tasks, milestones, stakeholders, riskRegister, projectDiscussions, discussionActionItems, discussionChangeLog, projectMembers, taskBacklog, insertTaskSchema, insertMilestoneSchema, insertStakeholderSchema, insertRiskSchema, insertProjectDiscussionSchema, insertDiscussionActionItemSchema, insertProjectMemberSchema, insertTaskBacklogSchema } from "@shared/schema";
+import { insertMigrationJobSchema, projects, insertProjectSchema, budgetTypeConfig, projectBudgets, budgetCategories, budgetSpending, budgetReceipts, insertBudgetCategorySchema, insertBudgetSpendingSchema, tasks, milestones, stakeholders, riskRegister, projectDiscussions, discussionActionItems, discussionChangeLog, projectMembers, taskBacklog, teams, teamMembers, teamCapacityIterations, teamCapacityMembers, insertTaskSchema, insertMilestoneSchema, insertStakeholderSchema, insertRiskSchema, insertProjectDiscussionSchema, insertDiscussionActionItemSchema, insertProjectMemberSchema, insertTaskBacklogSchema, insertTeamSchema, insertTeamMemberSchema, insertTeamCapacityIterationSchema, insertTeamCapacityMemberSchema } from "@shared/schema";
 import { neon } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
 import * as schema from '../shared/schema';
@@ -1208,6 +1208,99 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ 
         success: false,
         error: error instanceof Error ? error.message : "Failed to create milestone" 
+      });
+    }
+  });
+
+  // Teams API endpoints
+  app.get("/api/projects/:projectId/teams", async (req, res) => {
+    try {
+      const projectId = req.params.projectId;
+      const projectTeams = await db.select().from(teams).where(eq(teams.project_id, projectId));
+      
+      // Get member count for each team
+      const teamsWithCounts = await Promise.all(projectTeams.map(async (team) => {
+        const memberCount = await db.select().from(teamMembers).where(eq(teamMembers.team_id, team.id));
+        return {
+          ...team,
+          member_count: memberCount.length
+        };
+      }));
+      
+      res.json({
+        success: true,
+        data: teamsWithCounts
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to get teams" 
+      });
+    }
+  });
+
+  app.post("/api/projects/:projectId/teams", async (req, res) => {
+    try {
+      const projectId = req.params.projectId;
+      const teamData = insertTeamSchema.parse({
+        name: req.body.name || req.body.team_name,
+        description: req.body.description,
+        project_id: projectId,
+        created_by: "6dc39f1e-2af3-4b78-8488-317d90f4f538"
+      });
+      
+      const newTeam = await db.insert(teams).values(teamData).returning();
+      
+      res.json({
+        success: true,
+        data: newTeam[0]
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to create team" 
+      });
+    }
+  });
+
+  app.get("/api/teams/:teamId/members", async (req, res) => {
+    try {
+      const teamId = req.params.teamId;
+      const members = await db.select().from(teamMembers).where(eq(teamMembers.team_id, teamId));
+      
+      res.json({
+        success: true,
+        data: members
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to get team members" 
+      });
+    }
+  });
+
+  app.post("/api/teams/:teamId/members", async (req, res) => {
+    try {
+      const teamId = req.params.teamId;
+      const memberData = insertTeamMemberSchema.parse({
+        display_name: req.body.member_name || req.body.display_name,
+        role: req.body.role,
+        email: req.body.email,
+        work_mode: req.body.work_mode || "office",
+        team_id: teamId
+      });
+      
+      const newMember = await db.insert(teamMembers).values(memberData).returning();
+      
+      res.json({
+        success: true,
+        data: newMember[0]
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to create team member" 
       });
     }
   });

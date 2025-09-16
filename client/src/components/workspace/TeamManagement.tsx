@@ -14,7 +14,7 @@ import { apiClient } from '@/services/api';
 
 interface Team {
   id: string;
-  team_name: string;
+  name: string;
   description?: string;
   created_at: string;
   project_id: string;
@@ -24,20 +24,19 @@ interface Team {
 interface TeamMember {
   id: string;
   team_id: string;
-  member_name: string;
+  display_name: string;
   role?: string;
   email?: string;
-  skills?: string[];
   work_mode: string;
-  default_availability_percent: number;
   created_at: string;
 }
 
 interface TeamManagementProps {
   projectId: string;
+  onTeamCreated?: (team: Team) => void;
 }
 
-const TeamManagement: React.FC<TeamManagementProps> = ({ projectId }) => {
+const TeamManagement: React.FC<TeamManagementProps> = ({ projectId, onTeamCreated }) => {
   const [teams, setTeams] = useState<Team[]>([]);
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
@@ -54,12 +53,10 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ projectId }) => {
   });
 
   const [memberForm, setMemberForm] = useState({
-    member_name: '',
+    display_name: '',
     role: '',
     email: '',
-    skills: '',
-    work_mode: 'office',
-    default_availability_percent: 100
+    work_mode: 'office'
   });
 
   useEffect(() => {
@@ -111,6 +108,10 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ projectId }) => {
         setTeamDialogOpen(false);
         setTeamForm({ name: '', description: '' });
         fetchTeams();
+        // Call the callback if provided
+        if (onTeamCreated && response.data) {
+          onTeamCreated(response.data);
+        }
       }
     } catch (error) {
       console.error('Error creating team:', error);
@@ -169,20 +170,17 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ projectId }) => {
     try {
       setLoading(true);
       const memberData = {
-        ...memberForm,
-        skills: memberForm.skills ? memberForm.skills.split(',').map(s => s.trim()) : []
+        ...memberForm
       };
       const response = await apiClient.createTeamMember(selectedTeam.id, memberData);
       if (response.success) {
         toast({ title: 'Success', description: 'Team member added successfully' });
         setMemberDialogOpen(false);
         setMemberForm({
-          member_name: '',
+          display_name: '',
           role: '',
           email: '',
-          skills: '',
-          work_mode: 'office',
-          default_availability_percent: 100
+          work_mode: 'office'
         });
         fetchTeamMembers(selectedTeam.id);
       }
@@ -200,8 +198,7 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ projectId }) => {
     try {
       setLoading(true);
       const memberData = {
-        ...memberForm,
-        skills: memberForm.skills ? memberForm.skills.split(',').map(s => s.trim()) : []
+        ...memberForm
       };
       const response = await apiClient.updateTeamMember(editingMember.id, memberData);
       if (response.success) {
@@ -243,7 +240,7 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ projectId }) => {
   const openTeamDialog = (team?: Team) => {
     if (team) {
       setEditingTeam(team);
-      setTeamForm({ name: team.team_name, description: team.description || '' });
+      setTeamForm({ name: team.name, description: team.description || '' });
     } else {
       setEditingTeam(null);
       setTeamForm({ name: '', description: '' });
@@ -255,22 +252,18 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ projectId }) => {
     if (member) {
       setEditingMember(member);
       setMemberForm({
-        member_name: member.member_name,
+        display_name: member.display_name,
         role: member.role || '',
         email: member.email || '',
-        skills: member.skills?.join(', ') || '',
-        work_mode: member.work_mode,
-        default_availability_percent: member.default_availability_percent
+        work_mode: member.work_mode
       });
     } else {
       setEditingMember(null);
       setMemberForm({
-        member_name: '',
+        display_name: '',
         role: '',
         email: '',
-        skills: '',
-        work_mode: 'office',
-        default_availability_percent: 100
+        work_mode: 'office'
       });
     }
     setMemberDialogOpen(true);
@@ -346,7 +339,7 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ projectId }) => {
               >
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between mb-2">
-                    <h3 className="font-semibold">{team.team_name}</h3>
+                    <h3 className="font-semibold">{team.name}</h3>
                     <div className="flex gap-1">
                       <Button
                         variant="ghost"
@@ -390,9 +383,9 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ projectId }) => {
             <div>
               <CardTitle className="flex items-center gap-2">
                 <User className="h-5 w-5" />
-                {selectedTeam.team_name} Members
+                {selectedTeam.name} Members
               </CardTitle>
-              <p className="text-sm text-muted-foreground">Manage team members for {selectedTeam.team_name}</p>
+              <p className="text-sm text-muted-foreground">Manage team members for {selectedTeam.name}</p>
             </div>
             <Dialog open={memberDialogOpen} onOpenChange={setMemberDialogOpen}>
               <DialogTrigger asChild>
@@ -410,8 +403,8 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ projectId }) => {
                     <Label htmlFor="member-name">Name</Label>
                     <Input
                       id="member-name"
-                      value={memberForm.member_name}
-                      onChange={(e) => setMemberForm({ ...memberForm, member_name: e.target.value })}
+                      value={memberForm.display_name}
+                      onChange={(e) => setMemberForm({ ...memberForm, display_name: e.target.value })}
                       placeholder="Enter member name"
                     />
                   </div>
@@ -435,15 +428,6 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ projectId }) => {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="member-skills">Skills (comma-separated)</Label>
-                    <Input
-                      id="member-skills"
-                      value={memberForm.skills}
-                      onChange={(e) => setMemberForm({ ...memberForm, skills: e.target.value })}
-                      placeholder="e.g., React, Node.js, Python"
-                    />
-                  </div>
-                  <div>
                     <Label htmlFor="work-mode">Work Mode</Label>
                     <Select 
                       value={memberForm.work_mode} 
@@ -459,27 +443,13 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ projectId }) => {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div>
-                    <Label htmlFor="availability">Default Availability (%)</Label>
-                    <Input
-                      id="availability"
-                      type="number"
-                      min="0"
-                      max="100"
-                      value={memberForm.default_availability_percent}
-                      onChange={(e) => setMemberForm({ 
-                        ...memberForm, 
-                        default_availability_percent: parseInt(e.target.value) || 100 
-                      })}
-                    />
-                  </div>
                   <div className="flex gap-2 justify-end">
                     <Button variant="outline" onClick={() => setMemberDialogOpen(false)}>
                       Cancel
                     </Button>
                     <Button 
                       onClick={editingMember ? handleUpdateMember : handleCreateMember}
-                      disabled={!memberForm.member_name.trim() || loading}
+                      disabled={!memberForm.display_name.trim() || loading}
                     >
                       {editingMember ? 'Update' : 'Add'} Member
                     </Button>
@@ -495,38 +465,21 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ projectId }) => {
                   <TableHead>Name</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead>Work Mode</TableHead>
-                  <TableHead>Availability</TableHead>
-                  <TableHead>Skills</TableHead>
+                  <TableHead>Email</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {teamMembers.filter(m => m.team_id === selectedTeam.id).map((member) => (
                   <TableRow key={member.id}>
-                    <TableCell className="font-medium">{member.member_name}</TableCell>
+                    <TableCell className="font-medium">{member.display_name}</TableCell>
                     <TableCell>{member.role || '-'}</TableCell>
                     <TableCell>
                       <Badge variant="outline" className="capitalize">
                         {member.work_mode}
                       </Badge>
                     </TableCell>
-                    <TableCell>{member.default_availability_percent}%</TableCell>
-                    <TableCell>
-                      {member.skills && member.skills.length > 0 ? (
-                        <div className="flex gap-1 flex-wrap">
-                          {member.skills.slice(0, 2).map((skill, idx) => (
-                            <Badge key={idx} variant="secondary" className="text-xs">
-                              {skill}
-                            </Badge>
-                          ))}
-                          {member.skills.length > 2 && (
-                            <Badge variant="secondary" className="text-xs">
-                              +{member.skills.length - 2}
-                            </Badge>
-                          )}
-                        </div>
-                      ) : '-'}
-                    </TableCell>
+                    <TableCell>{member.email || '-'}</TableCell>
                     <TableCell>
                       <div className="flex gap-1">
                         <Button

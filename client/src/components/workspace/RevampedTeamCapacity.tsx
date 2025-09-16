@@ -16,7 +16,7 @@ import WeeklyAvailabilityManager from './WeeklyAvailabilityManager';
 
 interface Team {
   id: string;
-  team_name: string;
+  name: string;
   description?: string;
   member_count?: number;
 }
@@ -24,10 +24,9 @@ interface Team {
 interface TeamMember {
   id: string;
   team_id: string;
-  member_name: string;
+  display_name: string;
   role?: string;
   work_mode: string;
-  default_availability_percent: number;
 }
 
 interface Iteration {
@@ -207,6 +206,18 @@ const RevampedTeamCapacity: React.FC<RevampedTeamCapacityProps> = ({ projectId }
     });
   };
 
+  // Handle team creation success - show iteration creation popup
+  const handleTeamCreated = (newTeam: Team) => {
+    fetchTeams(); // Refresh teams list
+    // Show iteration creation dialog for this team
+    setIterationForm(prev => ({ ...prev, team_id: newTeam.id }));
+    setIterationDialogOpen(true);
+    toast({
+      title: "Team Created Successfully",
+      description: `${newTeam.name} has been created. Now create an iteration for this team.`,
+    });
+  };
+
   const openIterationDialog = (iteration?: Iteration) => {
     if (iteration) {
       setEditingIteration(iteration);
@@ -338,7 +349,7 @@ const RevampedTeamCapacity: React.FC<RevampedTeamCapacityProps> = ({ projectId }
         </TabsContent>
 
         <TabsContent value="teams">
-          <TeamManagement projectId={projectId} />
+          <TeamManagement projectId={projectId} onTeamCreated={handleTeamCreated} />
         </TabsContent>
 
         <TabsContent value="iterations" className="space-y-6">
