@@ -469,14 +469,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const spendingData = await db.select().from(budgetSpending)
         .innerJoin(budgetCategories, eq(budgetSpending.budget_category_id, budgetCategories.id))
-        .where(eq(budgetCategories.project_id, projectId));
+        .innerJoin(projectBudgets, eq(budgetCategories.project_budget_id, projectBudgets.id))
+        .where(eq(projectBudgets.project_id, projectId));
       const totalSpent = spendingData.reduce((sum, s) => sum + (parseFloat(s.budget_spending?.amount?.toString() || '0')), 0);
       
       // Team analytics
       const teamData = await db.select().from(teamCapacityMembers)
         .leftJoin(teamCapacityIterations, eq(teamCapacityMembers.iteration_id, teamCapacityIterations.id))
         .where(eq(teamCapacityIterations.project_id, projectId));
-      const totalMembers = new Set(teamData.map(t => t.team_capacity_members?.team_member_id)).size;
+      const totalMembers = new Set(teamData.map(t => t.team_capacity_members?.stakeholder_id)).size;
       const avgCapacity = teamData.length > 0 ? 
         teamData.reduce((sum, t) => sum + (t.team_capacity_members?.availability_percent || 0), 0) / teamData.length : 0;
 
