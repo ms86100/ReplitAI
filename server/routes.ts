@@ -11,7 +11,7 @@ import { insertMigrationJobSchema, projects, insertProjectSchema, budgetTypeConf
 import { neon } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
 import * as schema from '../shared/schema';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 
 const upload = multer({ 
   dest: 'uploads/',
@@ -1071,7 +1071,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Get the backlog item and validate ownership
       const backlogItem = await db.select().from(taskBacklog)
-        .where(eq(taskBacklog.id, itemId).and(eq(taskBacklog.project_id, projectId)));
+        .where(and(eq(taskBacklog.id, itemId), eq(taskBacklog.project_id, projectId)));
       
       if (backlogItem.length === 0) {
         return res.status(404).json({
@@ -1082,7 +1082,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Validate milestone exists and belongs to the project
       const milestone = await db.select().from(milestones)
-        .where(eq(milestones.id, milestoneId).and(eq(milestones.project_id, projectId)));
+        .where(and(eq(milestones.id, milestoneId), eq(milestones.project_id, projectId)));
       
       if (milestone.length === 0) {
         return res.status(404).json({
