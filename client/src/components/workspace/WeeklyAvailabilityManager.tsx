@@ -166,7 +166,7 @@ const WeeklyAvailabilityManager: React.FC<WeeklyAvailabilityManagerProps> = ({
       setLoading(true);
       
       // Prepare availability data for all weeks
-      const allAvailabilityData = [];
+      const allAvailabilityData: any[] = [];
       
       for (const week of weeks) {
         const weekAvailability = availability[week.id] || {};
