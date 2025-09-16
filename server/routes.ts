@@ -812,6 +812,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Workspace service - Create action item
+  app.post("/api/workspace-service/projects/:projectId/action-items", async (req, res) => {
+    try {
+      const projectId = req.params.projectId;
+      
+      // First create a discussion if one doesn't exist or use existing
+      let discussionId = req.body.discussion_id;
+      if (!discussionId) {
+        // Create a default discussion for action items
+        const discussionData = insertProjectDiscussionSchema.parse({
+          title: `Action Items Discussion - ${new Date().toISOString().split('T')[0]}`,
+          description: "Auto-created discussion for action items",
+          project_id: projectId,
+          created_by: "6dc39f1e-2af3-4b78-8488-317d90f4f538"
+        });
+        
+        const newDiscussion = await db.insert(projectDiscussions).values(discussionData).returning();
+        discussionId = newDiscussion[0].id;
+      }
+      
+      // Create the action item
+      const actionItemData = insertDiscussionActionItemSchema.parse({
+        ...req.body,
+        discussion_id: discussionId,
+        created_by: "6dc39f1e-2af3-4b78-8488-317d90f4f538"
+      });
+      
+      const newActionItem = await db.insert(discussionActionItems).values(actionItemData).returning();
+      
+      res.json({
+        success: true,
+        data: newActionItem[0]
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to create action item" 
+      });
+    }
+  });
+
   // Workspace service - Get discussions
   app.get("/api/workspace-service/projects/:projectId/discussions", async (req, res) => {
     try {

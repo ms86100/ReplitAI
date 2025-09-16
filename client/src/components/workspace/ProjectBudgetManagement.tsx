@@ -186,10 +186,10 @@ export function ProjectBudgetManagement({ projectId }: ProjectBudgetManagementPr
         
       }
       
-      setAnalytics(calculatedAnalytics || result.data.analytics);
+      setAnalytics(calculatedAnalytics);
 
       // Show error if no budget types available
-      if (!result.data.budgetTypes || result.data.budgetTypes.length === 0) {
+      if (!result.data?.budgetTypes || result.data.budgetTypes.length === 0) {
         toast({
           title: "Budget Types Missing",
           description: "No budget types available. Please create budget types in the Admin section.",
