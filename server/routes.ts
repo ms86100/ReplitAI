@@ -468,7 +468,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const totalReceived = budgetData.reduce((sum, b) => sum + (parseFloat(b.total_budget_received?.toString() || '0')), 0);
       
       const spendingData = await db.select().from(budgetSpending)
-        .leftJoin(budgetCategories, eq(budgetSpending.budget_category_id, budgetCategories.id))
+        .innerJoin(budgetCategories, eq(budgetSpending.budget_category_id, budgetCategories.id))
         .where(eq(budgetCategories.project_id, projectId));
       const totalSpent = spendingData.reduce((sum, s) => sum + (parseFloat(s.budget_spending?.amount?.toString() || '0')), 0);
       
