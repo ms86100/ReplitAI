@@ -497,12 +497,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/workspace-service/projects/:projectId/tasks", async (req, res) => {
     try {
       const projectId = req.params.projectId;
-      const taskData = insertTaskSchema.parse({
-        ...req.body,
+      
+      // Map camelCase to snake_case for database compatibility
+      const mappedData = {
+        title: req.body.title,
+        description: req.body.description,
+        status: req.body.status || 'todo',
+        priority: req.body.priority || 'medium',
+        due_date: req.body.dueDate || req.body.due_date || null,
+        owner_id: req.body.ownerId || req.body.owner_id || null,
+        milestone_id: req.body.milestoneId || req.body.milestone_id || null,
         project_id: projectId,
         created_by: "6dc39f1e-2af3-4b78-8488-317d90f4f538"
-      });
+      };
       
+      const taskData = insertTaskSchema.parse(mappedData);
       const newTask = await db.insert(tasks).values(taskData).returning();
       
       res.json({
@@ -513,6 +522,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ 
         success: false,
         error: error instanceof Error ? error.message : "Failed to create task" 
+      });
+    }
+  });
+
+  // Update task
+  app.put("/api/workspace-service/tasks/:taskId", async (req, res) => {
+    try {
+      const taskId = req.params.taskId;
+      const updateData: any = {};
+      
+      // Map frontend camelCase to backend snake_case
+      if (req.body.title !== undefined) updateData.title = req.body.title;
+      if (req.body.description !== undefined) updateData.description = req.body.description;
+      if (req.body.status !== undefined) updateData.status = req.body.status;
+      if (req.body.priority !== undefined) updateData.priority = req.body.priority;
+      if (req.body.dueDate !== undefined) updateData.due_date = req.body.dueDate;
+      if (req.body.ownerId !== undefined) updateData.owner_id = req.body.ownerId;
+      if (req.body.milestoneId !== undefined) updateData.milestone_id = req.body.milestoneId;
+      if (req.body.due_date !== undefined) updateData.due_date = req.body.due_date;
+      if (req.body.owner_id !== undefined) updateData.owner_id = req.body.owner_id;
+      if (req.body.milestone_id !== undefined) updateData.milestone_id = req.body.milestone_id;
+      
+      updateData.updated_at = new Date();
+      
+      const updatedTask = await db.update(tasks)
+        .set(updateData)
+        .where(eq(tasks.id, taskId))
+        .returning();
+        
+      if (updatedTask.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: "Task not found"
+        });
+      }
+      
+      res.json({
+        success: true,
+        data: updatedTask[0]
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to update task" 
+      });
+    }
+  });
+
+  // Delete task
+  app.delete("/api/workspace-service/tasks/:taskId", async (req, res) => {
+    try {
+      const taskId = req.params.taskId;
+      
+      const deletedTask = await db.delete(tasks)
+        .where(eq(tasks.id, taskId))
+        .returning();
+        
+      if (deletedTask.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: "Task not found"
+        });
+      }
+      
+      res.json({
+        success: true,
+        data: { message: "Task deleted successfully" }
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to delete task" 
       });
     }
   });
