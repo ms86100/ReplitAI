@@ -78,7 +78,7 @@ export function StakeholdersManagement({ projectId }: StakeholdersManagementProp
         throw new Error(response.error || 'Failed to fetch stakeholders');
       }
       
-      const stakeholderData = Array.isArray(response.data) ? response.data : [];
+      const stakeholderData = Array.isArray(response.data) ? response.data : (response.data?.stakeholders || response.data || []);
       setStakeholders(stakeholderData);
     } catch (error: any) {
       console.error('📋 Stakeholder fetch error:', error);
