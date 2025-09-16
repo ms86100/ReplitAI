@@ -445,29 +445,149 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Analytics service - Project overview
   app.get("/api/analytics-service/projects/:projectId/project-overview", async (req, res) => {
     try {
+      const { projectId } = req.params;
+      
+      // Task analytics
+      const projectTasks = await db.select().from(tasks).where(eq(tasks.project_id, projectId));
+      const totalTasks = projectTasks.length;
+      const completedTasks = projectTasks.filter(t => t.status === 'completed' || t.status === 'done').length;
+      const overdueTasks = projectTasks.filter(t => 
+        t.due_date && new Date(t.due_date) < new Date() && 
+        t.status !== 'completed' && t.status !== 'done'
+      ).length;
+      const avgCompletionTime = totalTasks > 0 ? 5.2 : 0; // Can be calculated from actual data later
+
+      // Milestone analytics  
+      const projectMilestones = await db.select().from(milestones).where(eq(milestones.project_id, projectId));
+      const totalMilestones = projectMilestones.length;
+      const completedMilestones = projectMilestones.filter(m => m.status === 'completed').length;
+      
+      // Budget analytics
+      const budgetData = await db.select().from(projectBudgets).where(eq(projectBudgets.project_id, projectId));
+      const totalAllocated = budgetData.reduce((sum, b) => sum + (parseFloat(b.total_budget_allocated?.toString() || '0')), 0);
+      const totalReceived = budgetData.reduce((sum, b) => sum + (parseFloat(b.total_budget_received?.toString() || '0')), 0);
+      
+      const spendingData = await db.select().from(budgetSpending)
+        .leftJoin(budgetCategories, eq(budgetSpending.budget_category_id, budgetCategories.id))
+        .where(eq(budgetCategories.project_id, projectId));
+      const totalSpent = spendingData.reduce((sum, s) => sum + (parseFloat(s.budget_spending?.amount?.toString() || '0')), 0);
+      
+      // Team analytics
+      const teamData = await db.select().from(teamCapacityMembers)
+        .leftJoin(teamCapacityIterations, eq(teamCapacityMembers.iteration_id, teamCapacityIterations.id))
+        .where(eq(teamCapacityIterations.project_id, projectId));
+      const totalMembers = new Set(teamData.map(t => t.team_capacity_members?.team_member_id)).size;
+      const avgCapacity = teamData.length > 0 ? 
+        teamData.reduce((sum, t) => sum + (t.team_capacity_members?.availability_percent || 0), 0) / teamData.length : 0;
+
+      // Risk analytics
+      const riskData = await db.select().from(riskRegister).where(eq(riskRegister.project_id, projectId));
+      const totalRisks = riskData.length;
+      const highRisks = riskData.filter(r => (r.likelihood || 0) * (r.impact || 0) >= 9).length;
+      const mitigatedRisks = riskData.filter(r => r.status === 'closed' || r.status === 'mitigated').length;
+
+      // Stakeholder analytics  
+      const stakeholderData = await db.select().from(stakeholders).where(eq(stakeholders.project_id, projectId));
+      const totalStakeholders = stakeholderData.length;
+
+      // Project health calculation
+      const budgetHealth = totalAllocated > 0 ? Math.max(0, 100 - (totalSpent / totalAllocated * 100)) : 100;
+      const timelineHealth = totalMilestones > 0 ? (completedMilestones / totalMilestones * 100) : 50;
+      const riskHealth = totalRisks > 0 ? Math.max(0, 100 - (highRisks / totalRisks * 100)) : 100;
+      const teamHealth = avgCapacity;
+      const overallHealth = (budgetHealth + timelineHealth + riskHealth + teamHealth) / 4;
+
+      // Task distribution by status
+      const tasksByStatus = [
+        { status: 'todo', count: projectTasks.filter(t => t.status === 'todo').length },
+        { status: 'in_progress', count: projectTasks.filter(t => t.status === 'in_progress').length },
+        { status: 'completed', count: completedTasks },
+        { status: 'on_hold', count: projectTasks.filter(t => t.status === 'on_hold').length }
+      ];
+
+      // Get stakeholders for task owner mapping
+      const tasksByOwner = stakeholderData.map(stakeholder => {
+        const userTasks = projectTasks.filter(task => task.owner_id === stakeholder.id);
+        return {
+          owner: stakeholder.name,
+          total: userTasks.length,
+          completed: userTasks.filter(task => task.status === 'completed').length,
+          inProgress: userTasks.filter(task => task.status === 'in_progress').length,
+          blocked: userTasks.filter(task => task.status === 'on_hold').length
+        };
+      }).filter(owner => owner.total > 0);
+
+      // Add unassigned tasks
+      const unassignedTasks = projectTasks.filter(task => !task.owner_id);
+      if (unassignedTasks.length > 0) {
+        tasksByOwner.push({
+          owner: 'Unassigned',
+          total: unassignedTasks.length,
+          completed: unassignedTasks.filter(task => task.status === 'completed').length,
+          inProgress: unassignedTasks.filter(task => task.status === 'in_progress').length,
+          blocked: unassignedTasks.filter(task => task.status === 'on_hold').length
+        });
+      }
+
+      const analyticsData = {
+        projectHealth: {
+          overall: Math.round(overallHealth),
+          budget: Math.round(budgetHealth),
+          timeline: Math.round(timelineHealth),
+          risks: Math.round(riskHealth),
+          team: Math.round(teamHealth)
+        },
+        budgetAnalytics: {
+          totalAllocated,
+          totalSpent,
+          remainingBudget: totalAllocated - totalSpent,
+          spendByCategory: [],
+          burnRate: []
+        },
+        teamPerformance: {
+          totalMembers,
+          activeMembers: totalMembers,
+          avgCapacity: Math.round(avgCapacity),
+          avgEfficiency: 85,
+          topPerformers: [],
+          capacityTrend: []
+        },
+        taskAnalytics: {
+          totalTasks,
+          completedTasks,
+          overdueTasks,
+          avgCompletionTime,
+          tasksByStatus,
+          tasksByOwner,
+          productivityTrend: []
+        },
+        riskAnalysis: {
+          totalRisks,
+          highRisks,
+          mitigatedRisks,
+          riskHeatmap: [],
+          risksByCategory: []
+        },
+        stakeholderEngagement: {
+          totalStakeholders,
+          activeStakeholders: totalStakeholders,
+          recentMeetings: 0,
+          communicationFrequency: []
+        },
+        retrospectiveInsights: {
+          totalRetrospectives: 0,
+          actionItemsCreated: 0,
+          actionItemsCompleted: 0,
+          satisfactionTrend: []
+        }
+      };
+
       res.json({
         success: true,
-        data: {
-          totalTasks: 45,
-          completedTasks: 28,
-          overdueTasks: 3,
-          activeMilestones: 4,
-          upcomingDeadlines: 2,
-          projectHealth: "on-track",
-          budgetUtilization: 65,
-          teamUtilization: 78,
-          tasksByOwner: [
-            { owner: "John Doe", total: 12, completed: 8 },
-            { owner: "Jane Smith", total: 15, completed: 10 },
-            { owner: "Mike Johnson", total: 8, completed: 5 }
-          ],
-          recentActivity: [
-            { type: "task-completed", description: "Design review completed", timestamp: new Date() },
-            { type: "milestone-reached", description: "Phase 1 milestone achieved", timestamp: new Date() }
-          ]
-        }
+        data: analyticsData
       });
     } catch (error) {
+      console.error('Analytics error:', error);
       res.status(500).json({ 
         success: false,
         error: error instanceof Error ? error.message : "Failed to get analytics" 

@@ -165,7 +165,7 @@ const WeeklyAvailabilityManager: React.FC<WeeklyAvailabilityManagerProps> = ({
         setAvailability(prev => {
           const updated = { ...prev };
           
-          response.data.forEach((item: any) => {
+          response.data?.forEach((item: any) => {
             if (item.iteration_week_id && item.team_member_id) {
               if (!updated[item.iteration_week_id]) {
                 updated[item.iteration_week_id] = {};
