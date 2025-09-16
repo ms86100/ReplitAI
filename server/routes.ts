@@ -1030,6 +1030,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Backlog service - Create backlog item
+  app.post("/api/backlog-service/projects/:projectId/backlog", async (req, res) => {
+    try {
+      const projectId = req.params.projectId;
+      const backlogData = insertTaskBacklogSchema.parse({
+        ...req.body,
+        project_id: projectId,
+        status: req.body.status || 'backlog',
+        created_by: "6dc39f1e-2af3-4b78-8488-317d90f4f538"
+      });
+      
+      const newBacklogItem = await db.insert(taskBacklog).values(backlogData).returning();
+      
+      res.json({
+        success: true,
+        data: newBacklogItem[0]
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to create backlog item" 
+      });
+    }
+  });
+
   // Roadmap service
   app.get("/api/roadmap-service/projects/:projectId/roadmap", async (req, res) => {
     try {
