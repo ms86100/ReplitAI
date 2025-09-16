@@ -394,7 +394,7 @@ export const teamCapacityIterations = pgTable("team_capacity_iterations", {
 
 export const iterationWeeks = pgTable("iteration_weeks", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-  iteration_id: uuid("iteration_id").notNull().references(() => teamCapacityIterations.id, { onDelete: 'cascade' }),
+  iteration_id: uuid("iteration_id").notNull(),
   week_index: integer("week_index").notNull(),
   week_start: date("week_start").notNull(),
   week_end: date("week_end").notNull(),

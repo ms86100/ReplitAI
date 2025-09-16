@@ -1387,8 +1387,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     
     if (weeks.length > 0) {
-      await db.insert(iterationWeeks).values(weeks);
-      console.log(`Created ${weeks.length} weeks for iteration ${iterationId}`);
+      try {
+        await db.insert(iterationWeeks).values(weeks);
+        console.log(`Created ${weeks.length} weeks for iteration ${iterationId}`);
+      } catch (error) {
+        console.error('Failed to insert iteration weeks:', error);
+        throw error;
+      }
     }
   };
 
@@ -1414,7 +1419,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Create iteration weeks based on start/end dates
         if (newIteration[0] && startDate && endDate) {
-          await createIterationWeeks(newIteration[0].id, startDate, endDate);
+          try {
+            await createIterationWeeks(newIteration[0].id, startDate, endDate);
+          } catch (error) {
+            console.warn('Failed to create iteration weeks, continuing without weeks:', error);
+          }
         }
         
         res.json({
@@ -1489,6 +1498,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const weeks = await db.select().from(iterationWeeks)
         .where(eq(iterationWeeks.iteration_id, iterationId))
         .orderBy(iterationWeeks.week_index);
+      
+      // If no weeks found, generate them from the iteration data
+      if (weeks.length === 0) {
+        const iteration = await db.select().from(teamCapacityIterations)
+          .where(eq(teamCapacityIterations.id, iterationId))
+          .limit(1);
+          
+        if (iteration.length > 0) {
+          const { start_date, end_date } = iteration[0];
+          try {
+            await createIterationWeeks(iterationId, start_date, end_date);
+            const newWeeks = await db.select().from(iterationWeeks)
+              .where(eq(iterationWeeks.iteration_id, iterationId))
+              .orderBy(iterationWeeks.week_index);
+            return res.json({
+              success: true,
+              data: newWeeks
+            });
+          } catch (weekError) {
+            console.warn('Failed to auto-create weeks:', weekError);
+          }
+        }
+      }
       
       res.json({
         success: true,
