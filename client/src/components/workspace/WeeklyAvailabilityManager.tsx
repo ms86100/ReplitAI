@@ -63,11 +63,17 @@ const WeeklyAvailabilityManager: React.FC<WeeklyAvailabilityManagerProps> = ({
       const fetchData = async () => {
         await generateWeeks();
         await fetchTeamMembers();
-        await fetchWeeklyAvailability();
       };
       fetchData();
     }
   }, [iterationId, teamId, startDate, endDate]);
+
+  // Separate effect for fetching availability after weeks and members are loaded
+  useEffect(() => {
+    if (weeks.length > 0 && teamMembers.length > 0) {
+      fetchWeeklyAvailability();
+    }
+  }, [weeks, teamMembers]);
 
   const generateWeeks = async () => {
     try {
@@ -122,29 +128,66 @@ const WeeklyAvailabilityManager: React.FC<WeeklyAvailabilityManagerProps> = ({
   };
 
   const initializeAvailability = (members: TeamMember[]) => {
-    const initialAvailability: Record<string, Record<string, WeeklyAvailability>> = {};
-    
-    weeks.forEach(week => {
-      initialAvailability[week.id] = {};
-      members.forEach(member => {
-        initialAvailability[week.id][member.id] = {
-          team_member_id: member.id,
-          availability_percent: member.default_availability_percent,
-          leaves: 0,
-          notes: ''
-        };
+    setAvailability(prev => {
+      const updated = { ...prev };
+      
+      weeks.forEach(week => {
+        if (!updated[week.id]) {
+          updated[week.id] = {};
+        }
+        
+        members.forEach(member => {
+          if (!updated[week.id][member.id]) {
+            updated[week.id][member.id] = {
+              team_member_id: member.id,
+              availability_percent: member.default_availability_percent,
+              leaves: 0,
+              notes: ''
+            };
+          }
+        });
       });
+      
+      return updated;
     });
-    
-    setAvailability(initialAvailability);
   };
 
   const fetchWeeklyAvailability = async () => {
     try {
-      // This would be implemented to fetch existing weekly availability data
-      // For now, we'll use the default initialization
+      console.log('🔍 Fetching weekly availability for iteration:', iterationId);
+      const response = await apiClient.getWeeklyAvailability(iterationId);
+      console.log('📊 Weekly availability response:', response);
+      
+      if (response.success && response.data && response.data.length > 0) {
+        console.log('✅ Found existing availability data:', response.data);
+        
+        // Merge fetched data with initialized availability
+        setAvailability(prev => {
+          const updated = { ...prev };
+          
+          response.data.forEach((item: any) => {
+            if (item.iteration_week_id && item.team_member_id) {
+              if (!updated[item.iteration_week_id]) {
+                updated[item.iteration_week_id] = {};
+              }
+              
+              updated[item.iteration_week_id][item.team_member_id] = {
+                team_member_id: item.team_member_id,
+                availability_percent: item.availability_percent || 100,
+                leaves: item.leaves || 0,
+                effective_capacity: parseFloat(item.effective_capacity) || 0,
+                notes: item.notes || ''
+              };
+            }
+          });
+          
+          return updated;
+        });
+      } else {
+        console.log('ℹ️ No existing availability data found, using defaults');
+      }
     } catch (error) {
-      console.error('Error fetching weekly availability:', error);
+      console.error('❌ Error fetching weekly availability:', error);
     }
   };
 
