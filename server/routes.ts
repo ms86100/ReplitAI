@@ -1320,6 +1320,162 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Capacity service endpoints
+  app.get("/api/capacity-service/projects/:projectId/capacity", async (req, res) => {
+    try {
+      const projectId = req.params.projectId;
+      
+      // Get iterations
+      const iterationsResult = await db.select().from(teamCapacityIterations)
+        .where(eq(teamCapacityIterations.project_id, projectId))
+        .orderBy(teamCapacityIterations.start_date);
+      
+      const iterations = iterationsResult.map(iteration => ({
+        ...iteration,
+        // Calculate effective capacity (placeholder calculation)
+        totalEffectiveCapacity: iteration.working_days * 7, // Rough estimate
+      }));
+      
+      res.json({
+        success: true,
+        data: {
+          projectId,
+          iterations,
+          summary: {
+            totalIterations: iterations.length,
+            totalCapacity: iterations.reduce((sum, iter) => sum + (iter.totalEffectiveCapacity || 0), 0)
+          }
+        }
+      });
+    } catch (error) {
+      console.error('Error fetching capacity data:', error);
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to fetch capacity data" 
+      });
+    }
+  });
+
+  app.post("/api/capacity-service/projects/:projectId/capacity", async (req, res) => {
+    try {
+      const projectId = req.params.projectId;
+      const { type, iterationName, startDate, endDate, workingDays, committedStoryPoints, teamId } = req.body;
+      
+      if (type === 'iteration') {
+        // Validate using Zod schema
+        const iterationData = insertTeamCapacityIterationSchema.parse({
+          project_id: projectId,
+          iteration_name: iterationName,
+          start_date: startDate,
+          end_date: endDate,
+          working_days: workingDays,
+          team_id: teamId || null,
+          committed_story_points: committedStoryPoints || 0,
+          created_by: "6dc39f1e-2af3-4b78-8488-317d90f4f538"
+        });
+        
+        const newIteration = await db.insert(teamCapacityIterations).values(iterationData).returning();
+        
+        res.json({
+          success: true,
+          data: {
+            message: 'Capacity iteration created successfully',
+            iteration: newIteration[0]
+          }
+        });
+      } else {
+        res.status(400).json({
+          success: false,
+          error: "Invalid type. Only 'iteration' is supported."
+        });
+      }
+    } catch (error) {
+      console.error('Error creating capacity iteration:', error);
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to create capacity iteration" 
+      });
+    }
+  });
+
+  app.put("/api/capacity-service/projects/:projectId/capacity/:iterationId", async (req, res) => {
+    try {
+      const { iterationId } = req.params;
+      const { iterationName, startDate, endDate, workingDays, committedStoryPoints } = req.body;
+      
+      const updateData = {
+        iteration_name: iterationName,
+        start_date: startDate,
+        end_date: endDate,
+        working_days: workingDays,
+        committed_story_points: committedStoryPoints || 0,
+        updated_at: new Date()
+      };
+      
+      const updatedIteration = await db.update(teamCapacityIterations)
+        .set(updateData)
+        .where(eq(teamCapacityIterations.id, iterationId))
+        .returning();
+      
+      if (updatedIteration.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: "Iteration not found"
+        });
+      }
+      
+      res.json({
+        success: true,
+        data: {
+          message: 'Iteration updated successfully',
+          iteration: updatedIteration[0]
+        }
+      });
+    } catch (error) {
+      console.error('Error updating iteration:', error);
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to update iteration" 
+      });
+    }
+  });
+
+  app.delete("/api/capacity-service/projects/:projectId/capacity/:iterationId", async (req, res) => {
+    try {
+      const { iterationId } = req.params;
+      const { type } = req.query;
+      
+      if (type === 'iteration') {
+        const deletedIteration = await db.delete(teamCapacityIterations)
+          .where(eq(teamCapacityIterations.id, iterationId))
+          .returning();
+        
+        if (deletedIteration.length === 0) {
+          return res.status(404).json({
+            success: false,
+            error: "Iteration not found"
+          });
+        }
+        
+        res.json({
+          success: true,
+          data: { message: 'Iteration deleted successfully' }
+        });
+      } else {
+        res.status(400).json({
+          success: false,
+          error: "Invalid type parameter"
+        });
+      }
+    } catch (error) {
+      console.error('Error deleting iteration:', error);
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to delete iteration" 
+      });
+    }
+  });
+
   // Retrospective service
   app.get("/api/retrospective-service/projects/:projectId/retrospectives", async (req, res) => {
     try {

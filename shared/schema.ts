@@ -380,16 +380,16 @@ export const teamMembers = pgTable("team_members", {
 export const teamCapacityIterations = pgTable("team_capacity_iterations", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   project_id: uuid("project_id").notNull(),
-  name: text("name").notNull(),
+  iteration_name: text("iteration_name").notNull(),
   start_date: date("start_date").notNull(),
   end_date: date("end_date").notNull(),
   working_days: integer("working_days").notNull(),
-  status: text("status").notNull().default("planning"),
-  team_id: uuid("team_id"),
   committed_story_points: integer("committed_story_points"),
   created_by: uuid("created_by").notNull(),
   created_at: timestamp("created_at", { withTimezone: true }).notNull().default(sql`now()`),
-  updated_at: timestamp("updated_at", { withTimezone: true }).notNull().default(sql`now()`)
+  updated_at: timestamp("updated_at", { withTimezone: true }).notNull().default(sql`now()`),
+  department_id: uuid("department_id"),
+  team_id: uuid("team_id")
 });
 
 export const teamCapacityMembers = pgTable("team_capacity_members", {

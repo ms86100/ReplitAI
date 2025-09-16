@@ -31,16 +31,18 @@ interface TeamMember {
 
 interface Iteration {
   id: string;
-  name: string;
+  iteration_name: string;
   start_date: string;
   end_date: string;
   working_days: number;
-  status: string;
   team_id?: string;
   team_name?: string;
   committed_story_points?: number;
   totalEffectiveCapacity?: number;
   members?: TeamMember[];
+  // Helper properties for compatibility
+  name?: string;
+  status?: string;
 }
 
 interface RevampedTeamCapacityProps {
@@ -315,14 +317,14 @@ const RevampedTeamCapacity: React.FC<RevampedTeamCapacityProps> = ({ projectId }
                 <TableBody>
                   {iterations.slice(0, 5).map((iteration) => (
                     <TableRow key={iteration.id}>
-                      <TableCell className="font-medium">{iteration.name}</TableCell>
+                      <TableCell className="font-medium">{iteration.iteration_name || iteration.name}</TableCell>
                       <TableCell>{iteration.team_name || 'No Team'}</TableCell>
                       <TableCell>
                         {new Date(iteration.start_date).toLocaleDateString()} - {new Date(iteration.end_date).toLocaleDateString()}
                       </TableCell>
                       <TableCell>
-                        <Badge variant={iteration.status === 'active' ? 'default' : 'secondary'}>
-                          {iteration.status}
+                        <Badge variant="secondary">
+                          planning
                         </Badge>
                       </TableCell>
                       <TableCell>{iteration.totalEffectiveCapacity?.toFixed(1) || '0.0'} days</TableCell>
@@ -484,15 +486,15 @@ const RevampedTeamCapacity: React.FC<RevampedTeamCapacityProps> = ({ projectId }
                 <TableBody>
                   {iterations.map((iteration) => (
                     <TableRow key={iteration.id}>
-                      <TableCell className="font-medium">{iteration.name}</TableCell>
+                      <TableCell className="font-medium">{iteration.iteration_name || iteration.name}</TableCell>
                       <TableCell>{iteration.team_name || 'No Team'}</TableCell>
                       <TableCell>
                         {new Date(iteration.start_date).toLocaleDateString()} - {new Date(iteration.end_date).toLocaleDateString()}
                       </TableCell>
                       <TableCell>{iteration.working_days}</TableCell>
                       <TableCell>
-                        <Badge variant={iteration.status === 'active' ? 'default' : 'secondary'}>
-                          {iteration.status}
+                        <Badge variant="secondary">
+                          planning
                         </Badge>
                       </TableCell>
                       <TableCell>{iteration.committed_story_points || 0}</TableCell>
