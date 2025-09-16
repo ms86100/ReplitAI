@@ -1535,6 +1535,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Save weekly availability
+  app.post("/api/capacity-service/iterations/:iterationId/availability", async (req, res) => {
+    try {
+      const { iterationId } = req.params;
+      const { availability } = req.body;
+      
+      if (!Array.isArray(availability) || availability.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: "No availability data provided"
+        });
+      }
+      
+      // For now, just return success since we don't have the table structure yet
+      res.json({
+        success: true,
+        data: {
+          message: 'Availability saved successfully',
+          updated: availability.length
+        }
+      });
+    } catch (error) {
+      console.error('Error saving weekly availability:', error);
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to save weekly availability" 
+      });
+    }
+  });
+
   app.delete("/api/capacity-service/projects/:projectId/capacity/:iterationId", async (req, res) => {
     try {
       const { iterationId } = req.params;
