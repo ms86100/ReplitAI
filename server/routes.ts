@@ -7,7 +7,7 @@ import { storage } from "./storage";
 import { BackupAnalyzer } from "./services/backup-analyzer";
 import { DatabaseRestorer } from "./services/database-restorer";
 import { DatabaseVerifier } from "./services/verification";
-import { insertMigrationJobSchema, projects, insertProjectSchema, budgetTypeConfig, projectBudgets, budgetCategories, budgetSpending, budgetReceipts, insertBudgetCategorySchema, insertBudgetSpendingSchema, tasks, milestones, stakeholders, riskRegister, projectDiscussions, discussionActionItems, discussionChangeLog, projectMembers, taskBacklog, teams, teamMembers, teamCapacityIterations, teamCapacityMembers, insertTaskSchema, insertMilestoneSchema, insertStakeholderSchema, insertRiskSchema, insertProjectDiscussionSchema, insertDiscussionActionItemSchema, insertProjectMemberSchema, insertTaskBacklogSchema, insertTeamSchema, insertTeamMemberSchema, insertTeamCapacityIterationSchema, insertTeamCapacityMemberSchema } from "@shared/schema";
+import { insertMigrationJobSchema, projects, insertProjectSchema, budgetTypeConfig, projectBudgets, budgetCategories, budgetSpending, budgetReceipts, insertBudgetCategorySchema, insertBudgetSpendingSchema, tasks, milestones, stakeholders, riskRegister, projectDiscussions, discussionActionItems, discussionChangeLog, projectMembers, taskBacklog, teams, teamMembers, teamCapacityIterations, teamCapacityMembers, iterationWeeks, insertTaskSchema, insertMilestoneSchema, insertStakeholderSchema, insertRiskSchema, insertProjectDiscussionSchema, insertDiscussionActionItemSchema, insertProjectMemberSchema, insertTaskBacklogSchema, insertTeamSchema, insertTeamMemberSchema, insertTeamCapacityIterationSchema, insertTeamCapacityMemberSchema, insertIterationWeekSchema } from "@shared/schema";
 import { neon } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
 import * as schema from '../shared/schema';
@@ -1356,6 +1356,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Helper function to create iteration weeks
+  const createIterationWeeks = async (iterationId: string, startDate: string, endDate: string) => {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const weeks = [];
+    
+    let weekIndex = 1;
+    let currentStart = new Date(start);
+    
+    while (currentStart <= end) {
+      const weekEnd = new Date(currentStart);
+      weekEnd.setDate(weekEnd.getDate() + 6); // Add 6 days to get week end
+      
+      // Don't go beyond iteration end date
+      if (weekEnd > end) {
+        weekEnd.setTime(end.getTime());
+      }
+      
+      weeks.push({
+        iteration_id: iterationId,
+        week_index: weekIndex,
+        week_start: currentStart.toISOString().split('T')[0],
+        week_end: weekEnd.toISOString().split('T')[0]
+      });
+      
+      // Move to next week
+      currentStart.setDate(currentStart.getDate() + 7);
+      weekIndex++;
+    }
+    
+    if (weeks.length > 0) {
+      await db.insert(iterationWeeks).values(weeks);
+      console.log(`Created ${weeks.length} weeks for iteration ${iterationId}`);
+    }
+  };
+
   app.post("/api/capacity-service/projects/:projectId/capacity", async (req, res) => {
     try {
       const projectId = req.params.projectId;
@@ -1375,6 +1411,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
         
         const newIteration = await db.insert(teamCapacityIterations).values(iterationData).returning();
+        
+        // Create iteration weeks based on start/end dates
+        if (newIteration[0] && startDate && endDate) {
+          await createIterationWeeks(newIteration[0].id, startDate, endDate);
+        }
         
         res.json({
           success: true,
@@ -1436,6 +1477,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ 
         success: false,
         error: error instanceof Error ? error.message : "Failed to update iteration" 
+      });
+    }
+  });
+
+  // Get iteration weeks
+  app.get("/api/capacity-service/iterations/:iterationId/weeks", async (req, res) => {
+    try {
+      const { iterationId } = req.params;
+      
+      const weeks = await db.select().from(iterationWeeks)
+        .where(eq(iterationWeeks.iteration_id, iterationId))
+        .orderBy(iterationWeeks.week_index);
+      
+      res.json({
+        success: true,
+        data: weeks
+      });
+    } catch (error) {
+      console.error('Error fetching iteration weeks:', error);
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to fetch iteration weeks" 
       });
     }
   });

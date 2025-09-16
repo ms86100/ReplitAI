@@ -392,6 +392,16 @@ export const teamCapacityIterations = pgTable("team_capacity_iterations", {
   team_id: uuid("team_id")
 });
 
+export const iterationWeeks = pgTable("iteration_weeks", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  iteration_id: uuid("iteration_id").notNull().references(() => teamCapacityIterations.id, { onDelete: 'cascade' }),
+  week_index: integer("week_index").notNull(),
+  week_start: date("week_start").notNull(),
+  week_end: date("week_end").notNull(),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().default(sql`now()`),
+  updated_at: timestamp("updated_at", { withTimezone: true }).notNull().default(sql`now()`)
+});
+
 export const teamCapacityMembers = pgTable("team_capacity_members", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   iteration_id: uuid("iteration_id").notNull(),
@@ -450,6 +460,12 @@ export const insertTeamCapacityIterationSchema = createInsertSchema(teamCapacity
   updated_at: true,
 });
 
+export const insertIterationWeekSchema = createInsertSchema(iterationWeeks).omit({
+  id: true,
+  created_at: true,
+  updated_at: true,
+});
+
 export const insertTeamCapacityMemberSchema = createInsertSchema(teamCapacityMembers).omit({
   id: true,
   created_at: true,
@@ -473,4 +489,6 @@ export type InsertTaskBacklog = z.infer<typeof insertTaskBacklogSchema>;
 export type InsertTeam = z.infer<typeof insertTeamSchema>;
 export type InsertTeamMember = z.infer<typeof insertTeamMemberSchema>;
 export type InsertTeamCapacityIteration = z.infer<typeof insertTeamCapacityIterationSchema>;
+export type InsertIterationWeek = z.infer<typeof insertIterationWeekSchema>;
+export type SelectIterationWeek = typeof iterationWeeks.$inferSelect;
 export type InsertTeamCapacityMember = z.infer<typeof insertTeamCapacityMemberSchema>;
