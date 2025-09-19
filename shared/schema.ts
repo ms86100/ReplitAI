@@ -82,6 +82,25 @@ export const insertProjectSchema = createInsertSchema(projects).omit({
 export type InsertProject = z.infer<typeof insertProjectSchema>;
 export type Project = typeof projects.$inferSelect;
 
+// Users table for authentication
+export const users = pgTable("users", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  email: text("email").notNull().unique(),
+  password_hash: text("password_hash").notNull(),
+  role: text("role").notNull().default("user"),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().default(sql`now()`),
+  updated_at: timestamp("updated_at", { withTimezone: true }).notNull().default(sql`now()`)
+});
+
+export const insertUserSchema = createInsertSchema(users).omit({
+  id: true,
+  created_at: true,
+  updated_at: true,
+});
+
+export type InsertUser = z.infer<typeof insertUserSchema>;
+export type User = typeof users.$inferSelect;
+
 // Budget tables
 export const budgetTypeConfig = pgTable("budget_type_config", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
