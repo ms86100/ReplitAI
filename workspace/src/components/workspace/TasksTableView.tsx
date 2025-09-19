@@ -31,6 +31,8 @@ interface Task {
   project_id: string;
   created_by: string;
   created_at: string;
+  jira_issue_key?: string;
+  jira_synced?: boolean;
 }
 
 interface Milestone {
@@ -100,7 +102,7 @@ export function TasksTableView({ tasks, milestones, onTaskUpdate, onMilestoneUpd
       groups.push({
         milestone: {
           id: 'unassigned',
-          name: 'Unassigned Tasks',
+          name: 'Backlog Tasks',
           description: 'Tasks not assigned to any milestone',
           status: 'planning',
           due_date: '',
@@ -629,6 +631,11 @@ function DraggableTaskRow({
             className: "h-4 w-4 text-muted-foreground" 
           })}
           <span className="truncate">{task.title}</span>
+          {task.jira_issue_key && (
+            <Badge variant="secondary" className="text-xs">
+              {task.jira_issue_key}
+            </Badge>
+          )}
         </div>
       </TableCell>
       <TableCell>
@@ -642,9 +649,16 @@ function DraggableTaskRow({
         </Badge>
       </TableCell>
       <TableCell>
-        <Badge variant={getPriorityBadgeVariant(task.priority)}>
-          {task.priority}
-        </Badge>
+        <div className="flex flex-wrap items-center gap-1">
+          <Badge variant={getPriorityBadgeVariant(task.priority)}>
+            {task.priority}
+          </Badge>
+          {task.jira_synced && (
+            <Badge variant="outline" className="text-xs bg-blue-50 border-blue-200 text-blue-700">
+              Imported from Jira
+            </Badge>
+          )}
+        </div>
       </TableCell>
       <TableCell>
         <div className="flex items-center gap-1 text-sm">

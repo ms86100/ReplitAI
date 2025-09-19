@@ -14,6 +14,8 @@ interface Task {
   milestone_id?: string;
   project_id: string;
   created_at: string;
+  jira_issue_key?: string;
+  jira_synced?: boolean;
 }
 
 interface Milestone {
@@ -330,7 +332,7 @@ export function GanttChart({ projectId }: GanttChartProps) {
                   <div className="w-80 px-4 py-3 border-r border-border bg-background">
                     <div className="flex items-center gap-2">
                       <div className="w-2 h-2 rounded-full bg-muted"></div>
-                      <span className="font-medium text-sm text-muted-foreground">Unassigned Tasks</span>
+                      <span className="font-medium text-sm text-muted-foreground">Backlog Tasks</span>
                       <span className="text-xs text-muted-foreground ml-auto">
                         {tasks.filter(task => !task.milestone_id).length} tasks
                       </span>
@@ -342,8 +344,20 @@ export function GanttChart({ projectId }: GanttChartProps) {
                 {tasks.filter(task => !task.milestone_id).map((task) => (
                   <div key={task.id} className="flex items-center hover:bg-muted/20 transition-colors">
                     <div className="w-80 px-4 py-3 border-r border-border bg-background">
-                      <div className="text-sm font-medium truncate">{task.title}</div>
-                      <div className="text-xs text-muted-foreground mt-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <div className="text-sm font-medium truncate">{task.title}</div>
+                        {task.jira_issue_key && (
+                          <Badge variant="secondary" className="text-xs">
+                            {task.jira_issue_key}
+                          </Badge>
+                        )}
+                        {task.jira_synced && (
+                          <Badge variant="outline" className="text-xs bg-blue-50 border-blue-200 text-blue-700">
+                            Jira
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
                         Due: {task.due_date ? format(new Date(task.due_date), 'MMM d') : 'No date'}
                         <span className="ml-2 text-xs font-medium text-muted-foreground">
                           A. Sagar
