@@ -2829,10 +2829,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         data: newCategory[0]
       });
     } catch (error) {
-      res.status(500).json({ 
-        success: false,
-        error: error instanceof Error ? error.message : "Failed to create budget category" 
-      });
+      // Check if it's a Zod validation error
+      if (error && typeof error === 'object' && 'issues' in error) {
+        res.status(400).json({ 
+          success: false,
+          error: "Validation failed",
+          details: error.issues
+        });
+      } else {
+        res.status(500).json({ 
+          success: false,
+          error: error instanceof Error ? error.message : "Failed to create budget category" 
+        });
+      }
     }
   });
 
@@ -2870,10 +2879,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         data: newSpending[0]
       });
     } catch (error) {
-      res.status(500).json({ 
-        success: false,
-        error: error instanceof Error ? error.message : "Failed to create spending entry" 
-      });
+      // Check if it's a Zod validation error
+      if (error && typeof error === 'object' && 'issues' in error) {
+        res.status(400).json({ 
+          success: false,
+          error: "Validation failed",
+          details: error.issues
+        });
+      } else {
+        res.status(500).json({ 
+          success: false,
+          error: error instanceof Error ? error.message : "Failed to create spending entry" 
+        });
+      }
     }
   });
 
