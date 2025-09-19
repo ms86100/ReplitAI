@@ -381,6 +381,11 @@ export const taskBacklog = pgTable("task_backlog", {
   source_type: text("source_type").default("manual"),
   source_id: uuid("source_id"),
   department_id: uuid("department_id"),
+  jira_synced: boolean("jira_synced").notNull().default(false),
+  jira_issue_key: text("jira_issue_key"),
+  jira_issue_id: text("jira_issue_id"),
+  jira_sync_enabled: boolean("jira_sync_enabled").notNull().default(false),
+  jira_last_sync: timestamp("jira_last_sync", { withTimezone: true }),
   created_at: timestamp("created_at", { withTimezone: true }).notNull().default(sql`now()`),
   updated_at: timestamp("updated_at", { withTimezone: true }).notNull().default(sql`now()`)
 });

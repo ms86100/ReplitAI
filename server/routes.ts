@@ -3377,15 +3377,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       for (const issue of searchResult.issues) {
         try {
-          // Check if task already exists with this Jira issue key
-          const existingTask = await db.select().from(tasks)
+          // Check if task already exists with this Jira issue key in backlog or tasks
+          const existingTaskInTasks = await db.select().from(tasks)
             .where(and(
               eq(tasks.project_id, projectId),
               eq(tasks.jira_issue_key, issue.key)
             ))
             .limit(1);
 
-          if (existingTask.length > 0) {
+          const existingTaskInBacklog = await db.select().from(taskBacklog)
+            .where(and(
+              eq(taskBacklog.project_id, projectId),
+              eq(taskBacklog.jira_issue_key, issue.key)
+            ))
+            .limit(1);
+
+          if (existingTaskInTasks.length > 0 || existingTaskInBacklog.length > 0) {
             console.log(`Task already exists for ${issue.key}, skipping`);
             skippedCount++;
             importResults.push({
@@ -3407,14 +3414,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             localStatus = 'blocked';
           }
 
-          // Create task from Jira issue
-          const taskData = insertTaskSchema.parse({
+          // Create task in backlog from Jira issue
+          const taskBacklogData = insertTaskBacklogSchema.parse({
             project_id: projectId,
             title: issue.fields.summary,
             description: issue.fields.description || '',
             status: localStatus,
             priority: issue.fields.priority?.name.toLowerCase() || 'medium',
-            milestone_id: null, // Ensure imported tasks go to backlog
+            source_type: 'jira',
             jira_synced: true,
             jira_issue_key: issue.key,
             jira_issue_id: issue.id,
@@ -3423,7 +3430,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             created_by: userId
           });
 
-          const [newTask] = await db.insert(tasks).values(taskData).returning();
+          const [newTask] = await db.insert(taskBacklog).values(taskBacklogData).returning();
           
           // Log sync history
           const syncHistoryData = insertJiraSyncHistorySchema.parse({
