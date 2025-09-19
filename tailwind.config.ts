@@ -61,6 +61,13 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        // Airbus Brand Colors
+        'brand-primary': 'hsl(var(--brand-primary))',
+        'brand-on-primary': 'hsl(var(--brand-on-primary))',
+        'brand-accent': 'hsl(var(--brand-accent))',
+        'airbus-primary': 'hsl(var(--brand-primary))',
+        'airbus-secondary': 'hsl(var(--secondary))',
+        'airbus-secondary-dark': 'hsl(var(--secondary-hover))',
       },
       fontFamily: {
         sans: ["var(--font-sans)"],

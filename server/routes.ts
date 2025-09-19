@@ -11,7 +11,7 @@ import { DatabaseVerifier } from "./services/verification";
 import { insertMigrationJobSchema, projects, insertProjectSchema, budgetTypeConfig, projectBudgets, budgetCategories, budgetSpending, budgetReceipts, insertBudgetCategorySchema, insertBudgetSpendingSchema, tasks, milestones, stakeholders, riskRegister, projectDiscussions, discussionActionItems, discussionChangeLog, projectMembers, taskBacklog, teams, teamMembers, teamCapacityIterations, teamCapacityMembers, iterationWeeks, weeklyAvailability, insertTaskSchema, insertMilestoneSchema, insertStakeholderSchema, insertRiskSchema, insertProjectDiscussionSchema, insertDiscussionActionItemSchema, insertProjectMemberSchema, insertTaskBacklogSchema, insertTeamSchema, insertTeamMemberSchema, insertTeamCapacityIterationSchema, insertTeamCapacityMemberSchema, insertIterationWeekSchema, insertWeeklyAvailabilitySchema, users, retrospectives, retrospectiveColumns, retrospectiveCards, retrospectiveActionItems, retrospectiveCardVotes, insertRetrospectiveSchema, insertRetrospectiveColumnSchema, insertRetrospectiveCardSchema, insertRetrospectiveActionItemSchema } from "@shared/schema";
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, exists } from 'drizzle-orm';
 import { db } from './db';
 
 const upload = multer({ 
@@ -22,6 +22,56 @@ const upload = multer({
 const backupAnalyzer = new BackupAnalyzer();
 const databaseRestorer = new DatabaseRestorer();
 const databaseVerifier = new DatabaseVerifier();
+
+// Authentication middleware
+async function verifyToken(req: any, res: any, next: any) {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({
+        success: false,
+        error: 'Access token required'
+      });
+    }
+
+    const token = authHeader.substring(7);
+    
+    try {
+      if (!process.env.JWT_SECRET) {
+        throw new Error('JWT_SECRET environment variable is required');
+      }
+      const decoded = jwt.verify(token, process.env.JWT_SECRET) as any;
+      
+      // Fetch user from database to ensure they still exist
+      const user = await db.select().from(users).where(eq(users.id, decoded.userId)).limit(1);
+
+      if (user.length === 0) {
+        return res.status(401).json({
+          success: false,
+          error: 'User not found'
+        });
+      }
+
+      req.user = {
+        id: decoded.userId,
+        email: decoded.email,
+        role: decoded.role
+      };
+      
+      next();
+    } catch (jwtError) {
+      return res.status(401).json({
+        success: false,
+        error: 'Invalid or expired token'
+      });
+    }
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Authentication error'
+    });
+  }
+}
 
 export async function registerRoutes(app: Express): Promise<Server> {
   
@@ -265,6 +315,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ 
         success: false,
         error: error instanceof Error ? error.message : "Failed to fetch project" 
+      });
+    }
+  });
+
+  // Projects service - Delete project
+  app.delete("/api/projects-service/projects/:id", verifyToken, async (req, res) => {
+    try {
+      const projectId = req.params.id;
+      
+      const deletedProject = await db.delete(projects)
+        .where(eq(projects.id, projectId))
+        .returning();
+        
+      if (deletedProject.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: "Project not found"
+        });
+      }
+      
+      res.json({
+        success: true,
+        data: { message: "Project deleted successfully" }
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to delete project" 
       });
     }
   });
@@ -1172,6 +1250,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Workspace service - Delete action item
+  app.delete("/api/workspace-service/projects/:projectId/action-items/:actionItemId", verifyToken, async (req, res) => {
+    try {
+      const projectId = req.params.projectId;
+      const actionItemId = req.params.actionItemId;
+      
+      // Delete action item with project scoping by joining with discussion
+      const deletedActionItem = await db.delete(discussionActionItems)
+        .where(
+          and(
+            eq(discussionActionItems.id, actionItemId),
+            exists(
+              db.select().from(projectDiscussions)
+                .where(
+                  and(
+                    eq(projectDiscussions.id, discussionActionItems.discussion_id),
+                    eq(projectDiscussions.project_id, projectId)
+                  )
+                )
+            )
+          )
+        )
+        .returning();
+        
+      if (deletedActionItem.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: "Action item not found or not accessible"
+        });
+      }
+      
+      res.json({
+        success: true,
+        data: { message: "Action item deleted successfully" }
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to delete action item" 
+      });
+    }
+  });
+
   // Workspace service - Get discussions
   app.get("/api/workspace-service/projects/:projectId/discussions", async (req, res) => {
     try {
@@ -1210,6 +1331,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ 
         success: false,
         error: error instanceof Error ? error.message : "Failed to create discussion" 
+      });
+    }
+  });
+
+  // Workspace service - Delete discussion
+  app.delete("/api/workspace-service/projects/:projectId/discussions/:discussionId", verifyToken, async (req, res) => {
+    try {
+      const projectId = req.params.projectId;
+      const discussionId = req.params.discussionId;
+      
+      const deletedDiscussion = await db.delete(projectDiscussions)
+        .where(and(eq(projectDiscussions.id, discussionId), eq(projectDiscussions.project_id, projectId)))
+        .returning();
+        
+      if (deletedDiscussion.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: "Discussion not found or not accessible"
+        });
+      }
+      
+      res.json({
+        success: true,
+        data: { message: "Discussion deleted successfully" }
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to delete discussion" 
       });
     }
   });
@@ -1309,6 +1459,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ 
         success: false,
         error: error instanceof Error ? error.message : "Failed to create backlog item" 
+      });
+    }
+  });
+
+  // Backlog service - Delete backlog item
+  app.delete("/api/backlog-service/projects/:projectId/backlog/:itemId", verifyToken, async (req, res) => {
+    try {
+      const projectId = req.params.projectId;
+      const itemId = req.params.itemId;
+      
+      const deletedItem = await db.delete(taskBacklog)
+        .where(and(eq(taskBacklog.id, itemId), eq(taskBacklog.project_id, projectId)))
+        .returning();
+        
+      if (deletedItem.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: "Backlog item not found or not accessible"
+        });
+      }
+      
+      res.json({
+        success: true,
+        data: { message: "Backlog item deleted successfully" }
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to delete backlog item" 
       });
     }
   });
@@ -1517,6 +1696,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ 
         success: false,
         error: error instanceof Error ? error.message : "Failed to create team" 
+      });
+    }
+  });
+
+  // Team service - Delete team (aligned with existing pattern)
+  app.delete("/api/projects/:projectId/teams/:teamId", verifyToken, async (req, res) => {
+    try {
+      const projectId = req.params.projectId;
+      const teamId = req.params.teamId;
+      
+      const deletedTeam = await db.delete(teams)
+        .where(and(eq(teams.id, teamId), eq(teams.project_id, projectId)))
+        .returning();
+        
+      if (deletedTeam.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: "Team not found or not accessible"
+        });
+      }
+      
+      res.json({
+        success: true,
+        data: { message: "Team deleted successfully" }
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to delete team" 
+      });
+    }
+  });
+
+  // Team service - Delete team (legacy alias for backward compatibility)
+  app.delete("/api/capacity-service/teams/:teamId", verifyToken, async (req, res) => {
+    try {
+      const teamId = req.params.teamId;
+      
+      const deletedTeam = await db.delete(teams)
+        .where(eq(teams.id, teamId))
+        .returning();
+        
+      if (deletedTeam.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: "Team not found"
+        });
+      }
+      
+      res.json({
+        success: true,
+        data: { message: "Team deleted successfully" }
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to delete team" 
       });
     }
   });
