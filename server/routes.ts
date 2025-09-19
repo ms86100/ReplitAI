@@ -28,14 +28,8 @@ const databaseVerifier = new DatabaseVerifier();
 async function verifyToken(req: any, res: any, next: any) {
   try {
     const authHeader = req.headers.authorization;
-    console.log('=== AUTH MIDDLEWARE ===');
-    console.log('Path:', req.path);
-    console.log('Method:', req.method);
-    console.log('Auth header present:', !!authHeader);
-    console.log('Auth header format:', authHeader ? authHeader.substring(0, 20) + '...' : 'none');
     
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      console.log('Auth failed: missing or invalid header format');
       return res.status(401).json({
         success: false,
         error: 'Access token required'
@@ -43,7 +37,6 @@ async function verifyToken(req: any, res: any, next: any) {
     }
 
     const token = authHeader.substring(7);
-    console.log('Token length:', token.length);
     
     try {
       if (!process.env.JWT_SECRET) {
@@ -67,17 +60,14 @@ async function verifyToken(req: any, res: any, next: any) {
         role: decoded.role
       };
       
-      console.log('Auth successful for user:', decoded.email);
       next();
     } catch (jwtError) {
-      console.log('JWT verification failed:', jwtError);
       return res.status(401).json({
         success: false,
         error: 'Invalid or expired token'
       });
     }
   } catch (error) {
-    console.log('Auth middleware error:', error);
     res.status(500).json({
       success: false,
       error: 'Authentication error'
