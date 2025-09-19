@@ -231,7 +231,7 @@ const ProjectsList = () => {
     <div className="space-y-6">
       {/* Blue Header Section */}
       <div className="bg-gradient-to-r from-blue-600 to-blue-400 rounded-lg p-8 text-white">
-        <h1 className="text-3xl font-bold mb-2">Welcome to Purple Cow</h1>
+        <h1 className="text-3xl font-bold mb-2 text-airbus-primary">Welcome to Airbus Project Hub</h1>
         <p className="text-blue-50 mb-6">Coordinate and track your assigned projects</p>
         
         <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>

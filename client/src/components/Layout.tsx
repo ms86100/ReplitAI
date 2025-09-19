@@ -52,7 +52,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               <Plane className="h-7 w-7 text-brand-on-primary" />
             </div>
             <div>
-              <h1 className="text-2xl font-heading font-bold text-text-primary tracking-tight">Purple Cow</h1>
+              <h1 className="text-2xl font-heading font-bold text-airbus-primary tracking-tight">Airbus Project Hub</h1>
               <p className="text-sm text-text-muted font-medium">Professional Project Management</p>
             </div>
           </div>

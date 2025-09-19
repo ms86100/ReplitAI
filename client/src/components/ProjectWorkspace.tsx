@@ -47,7 +47,7 @@ const ProjectWorkspace = () => {
                   <div className="w-4 h-4 bg-primary-foreground rounded-sm"></div>
                 </div>
                 <div>
-                  <h1 className="text-lg font-semibold text-foreground">Purple Cow</h1>
+                  <h1 className="text-lg font-semibold text-airbus-primary">Airbus Project Hub</h1>
                   <p className="text-xs text-muted-foreground">Enterprise Platform</p>
                 </div>
               </div>
