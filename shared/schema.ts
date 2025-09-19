@@ -213,6 +213,12 @@ export const tasks = pgTable("tasks", {
   created_by: uuid("created_by").notNull(),
   due_date: date("due_date"),
   department_id: uuid("department_id"),
+  // Jira sync fields
+  jira_synced: boolean("jira_synced").default(false),
+  jira_issue_key: text("jira_issue_key"),
+  jira_issue_id: text("jira_issue_id"),
+  jira_sync_enabled: boolean("jira_sync_enabled").default(false),
+  jira_last_sync: timestamp("jira_last_sync", { withTimezone: true }),
   created_at: timestamp("created_at", { withTimezone: true }).notNull().default(sql`now()`),
   updated_at: timestamp("updated_at", { withTimezone: true }).notNull().default(sql`now()`)
 });
@@ -676,6 +682,58 @@ export const moduleAccessAudit = pgTable("module_access_audit", {
   access_level: text("access_level").notNull(), // read, write
   timestamp: timestamp("timestamp", { withTimezone: true }).notNull().default(sql`now()`)
 });
+
+// Jira Integration table
+export const jiraIntegrations = pgTable("jira_integrations", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  project_id: uuid("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  jira_base_url: text("jira_base_url").notNull(),
+  jira_email: text("jira_email").notNull(),
+  jira_api_token: text("jira_api_token").notNull(), // encrypted
+  jira_project_key: text("jira_project_key").notNull(),
+  jira_project_id: text("jira_project_id"),
+  enabled: boolean("enabled").default(true),
+  sync_enabled: boolean("sync_enabled").default(false),
+  auto_sync: boolean("auto_sync").default(false),
+  field_mapping: text("field_mapping"), // JSON string for field mappings
+  last_sync: timestamp("last_sync", { withTimezone: true }),
+  created_by: uuid("created_by").notNull().references(() => users.id),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().default(sql`now()`),
+  updated_at: timestamp("updated_at", { withTimezone: true }).notNull().default(sql`now()`)
+});
+
+// Jira Sync History table
+export const jiraSyncHistory = pgTable("jira_sync_history", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  project_id: uuid("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  task_id: uuid("task_id").references(() => tasks.id, { onDelete: "cascade" }),
+  jira_issue_key: text("jira_issue_key"),
+  sync_direction: text("sync_direction").notNull(), // 'to_jira', 'from_jira', 'bidirectional'
+  operation: text("operation").notNull(), // 'create', 'update', 'status_change'
+  status: text("status").notNull(), // 'success', 'error', 'pending'
+  error_message: text("error_message"),
+  sync_data: text("sync_data"), // JSON string of synced data
+  performed_by: uuid("performed_by").references(() => users.id),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().default(sql`now()`)
+});
+
+// Insert schemas for Jira integration
+export const insertJiraIntegrationSchema = createInsertSchema(jiraIntegrations).omit({
+  id: true,
+  created_at: true,
+  updated_at: true,
+});
+
+export const insertJiraSyncHistorySchema = createInsertSchema(jiraSyncHistory).omit({
+  id: true,
+  created_at: true,
+});
+
+// Types for Jira integration
+export type JiraIntegration = typeof jiraIntegrations.$inferSelect;
+export type JiraSyncHistory = typeof jiraSyncHistory.$inferSelect;
+export type InsertJiraIntegration = z.infer<typeof insertJiraIntegrationSchema>;
+export type InsertJiraSyncHistory = z.infer<typeof insertJiraSyncHistorySchema>;
 
 // Insert schemas for access control tables
 export const insertUserRoleSchema = createInsertSchema(userRoles).omit({

@@ -8,7 +8,8 @@ import { storage } from "./storage";
 import { BackupAnalyzer } from "./services/backup-analyzer";
 import { DatabaseRestorer } from "./services/database-restorer";
 import { DatabaseVerifier } from "./services/verification";
-import { insertMigrationJobSchema, projects, insertProjectSchema, budgetTypeConfig, projectBudgets, budgetCategories, budgetSpending, budgetReceipts, insertBudgetCategorySchema, insertBudgetSpendingSchema, tasks, milestones, stakeholders, riskRegister, projectDiscussions, discussionActionItems, discussionChangeLog, projectMembers, taskBacklog, teams, teamMembers, teamCapacityIterations, teamCapacityMembers, iterationWeeks, weeklyAvailability, insertTaskSchema, insertMilestoneSchema, insertStakeholderSchema, insertRiskSchema, insertProjectDiscussionSchema, insertDiscussionActionItemSchema, insertProjectMemberSchema, insertTaskBacklogSchema, insertTeamSchema, insertTeamMemberSchema, insertTeamCapacityIterationSchema, insertTeamCapacityMemberSchema, insertIterationWeekSchema, insertWeeklyAvailabilitySchema, users, retrospectives, retrospectiveColumns, retrospectiveCards, retrospectiveActionItems, retrospectiveCardVotes, insertRetrospectiveSchema, insertRetrospectiveColumnSchema, insertRetrospectiveCardSchema, insertRetrospectiveActionItemSchema } from "@shared/schema";
+import { JiraService, defaultJiraFieldMapping } from "./services/jiraService";
+import { insertMigrationJobSchema, projects, insertProjectSchema, budgetTypeConfig, projectBudgets, budgetCategories, budgetSpending, budgetReceipts, insertBudgetCategorySchema, insertBudgetSpendingSchema, tasks, milestones, stakeholders, riskRegister, projectDiscussions, discussionActionItems, discussionChangeLog, projectMembers, taskBacklog, teams, teamMembers, teamCapacityIterations, teamCapacityMembers, iterationWeeks, weeklyAvailability, insertTaskSchema, insertMilestoneSchema, insertStakeholderSchema, insertRiskSchema, insertProjectDiscussionSchema, insertDiscussionActionItemSchema, insertProjectMemberSchema, insertTaskBacklogSchema, insertTeamSchema, insertTeamMemberSchema, insertTeamCapacityIterationSchema, insertTeamCapacityMemberSchema, insertIterationWeekSchema, insertWeeklyAvailabilitySchema, users, retrospectives, retrospectiveColumns, retrospectiveCards, retrospectiveActionItems, retrospectiveCardVotes, insertRetrospectiveSchema, insertRetrospectiveColumnSchema, insertRetrospectiveCardSchema, insertRetrospectiveActionItemSchema, jiraIntegrations, jiraSyncHistory, insertJiraIntegrationSchema, insertJiraSyncHistorySchema } from "@shared/schema";
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { eq, and, exists } from 'drizzle-orm';
@@ -3007,6 +3008,300 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ 
         success: false,
         error: error instanceof Error ? error.message : "Failed to grant permission" 
+      });
+    }
+  });
+
+  // ================== Jira Integration API ==================
+
+  // Get Jira integration settings for a project
+  app.get("/api/jira-service/projects/:projectId/integration", verifyToken, async (req, res) => {
+    try {
+      const { projectId } = req.params;
+      const integration = await db.select().from(jiraIntegrations).where(eq(jiraIntegrations.project_id, projectId)).limit(1);
+      
+      if (integration.length === 0) {
+        return res.json({
+          success: true,
+          data: null
+        });
+      }
+
+      // Don't return the API token for security
+      const { jira_api_token, ...safeIntegration } = integration[0];
+      
+      res.json({
+        success: true,
+        data: safeIntegration
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to get Jira integration"
+      });
+    }
+  });
+
+  // Create or update Jira integration settings
+  app.post("/api/jira-service/projects/:projectId/integration", verifyToken, async (req, res) => {
+    try {
+      const { projectId } = req.params;
+      const { jira_base_url, jira_email, jira_api_token, jira_project_key } = req.body;
+      
+      if (!jira_base_url || !jira_email || !jira_api_token || !jira_project_key) {
+        return res.status(400).json({
+          success: false,
+          error: "Jira base URL, email, API token, and project key are required"
+        });
+      }
+
+      // Test the connection first
+      const jiraService = new JiraService(jira_base_url, jira_email, jira_api_token, jira_project_key);
+      const connectionTest = await jiraService.testConnection();
+      
+      if (!connectionTest.success) {
+        return res.status(400).json({
+          success: false,
+          error: `Jira connection failed: ${connectionTest.error}`
+        });
+      }
+
+      // Check if integration exists
+      const existing = await db.select().from(jiraIntegrations).where(eq(jiraIntegrations.project_id, projectId)).limit(1);
+
+      const integrationData = insertJiraIntegrationSchema.parse({
+        project_id: projectId,
+        jira_base_url,
+        jira_email,
+        jira_api_token, // In production, this should be encrypted
+        jira_project_key,
+        field_mapping: JSON.stringify(defaultJiraFieldMapping),
+        created_by: req.user.id
+      });
+
+      if (existing.length > 0) {
+        // Update existing integration
+        await db.update(jiraIntegrations)
+          .set({
+            ...integrationData,
+            updated_at: new Date()
+          })
+          .where(eq(jiraIntegrations.project_id, projectId));
+      } else {
+        // Create new integration
+        await db.insert(jiraIntegrations).values(integrationData);
+      }
+
+      res.json({
+        success: true,
+        data: { message: "Jira integration configured successfully" }
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to configure Jira integration"
+      });
+    }
+  });
+
+  // Test Jira connection
+  app.post("/api/jira-service/projects/:projectId/test-connection", verifyToken, async (req, res) => {
+    try {
+      const { projectId } = req.params;
+      const integration = await db.select().from(jiraIntegrations).where(eq(jiraIntegrations.project_id, projectId)).limit(1);
+      
+      if (integration.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: "Jira integration not configured"
+        });
+      }
+
+      const config = integration[0];
+      const jiraService = new JiraService(config.jira_base_url, config.jira_email, config.jira_api_token, config.jira_project_key);
+      const result = await jiraService.testConnection();
+
+      res.json({
+        success: result.success,
+        data: result.success ? { message: "Connection successful" } : null,
+        error: result.error
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to test connection"
+      });
+    }
+  });
+
+  // Sync task to Jira
+  app.post("/api/jira-service/projects/:projectId/tasks/:taskId/sync", verifyToken, async (req, res) => {
+    try {
+      const { projectId, taskId } = req.params;
+      
+      // Get integration settings
+      const integration = await db.select().from(jiraIntegrations).where(eq(jiraIntegrations.project_id, projectId)).limit(1);
+      if (integration.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: "Jira integration not configured"
+        });
+      }
+
+      // Get task
+      const task = await db.select().from(tasks).where(eq(tasks.id, taskId)).limit(1);
+      if (task.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: "Task not found"
+        });
+      }
+
+      const config = integration[0];
+      const taskData = task[0];
+
+      // Check if task is already synced
+      if (taskData.jira_synced && taskData.jira_issue_key) {
+        return res.status(400).json({
+          success: false,
+          error: "Task is already synced to Jira"
+        });
+      }
+
+      const jiraService = new JiraService(config.jira_base_url, config.jira_email, config.jira_api_token, config.jira_project_key);
+      const fieldMapping = JSON.parse(config.field_mapping || JSON.stringify(defaultJiraFieldMapping));
+
+      // Create issue in Jira
+      const jiraPayload = JiraService.taskToJiraPayload(taskData, config.jira_project_key, fieldMapping);
+      const createdIssue = await jiraService.createIssue(jiraPayload);
+
+      // Update task with Jira information
+      await db.update(tasks)
+        .set({
+          jira_synced: true,
+          jira_sync_enabled: true,
+          jira_issue_key: createdIssue.key,
+          jira_issue_id: createdIssue.id,
+          jira_last_sync: new Date(),
+          updated_at: new Date()
+        })
+        .where(eq(tasks.id, taskId));
+
+      // Log sync history
+      const syncHistoryData = insertJiraSyncHistorySchema.parse({
+        project_id: projectId,
+        task_id: taskId,
+        jira_issue_key: createdIssue.key,
+        sync_direction: 'to_jira',
+        operation: 'create',
+        status: 'success',
+        sync_data: JSON.stringify({ issue: createdIssue }),
+        performed_by: req.user.id
+      });
+      await db.insert(jiraSyncHistory).values(syncHistoryData);
+
+      res.json({
+        success: true,
+        data: {
+          message: "Task synced to Jira successfully",
+          jira_issue_key: createdIssue.key,
+          jira_url: `${config.jira_base_url}/browse/${createdIssue.key}`
+        }
+      });
+    } catch (error) {
+      // Log failed sync
+      try {
+        const syncHistoryData = insertJiraSyncHistorySchema.parse({
+          project_id: req.params.projectId,
+          task_id: req.params.taskId,
+          sync_direction: 'to_jira',
+          operation: 'create',
+          status: 'error',
+          error_message: error instanceof Error ? error.message : 'Unknown error',
+          performed_by: req.user.id
+        });
+        await db.insert(jiraSyncHistory).values(syncHistoryData);
+      } catch (logError) {
+        console.error('Failed to log sync error:', logError);
+      }
+
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to sync task to Jira"
+      });
+    }
+  });
+
+  // Unsync task from Jira
+  app.delete("/api/jira-service/projects/:projectId/tasks/:taskId/sync", verifyToken, async (req, res) => {
+    try {
+      const { taskId } = req.params;
+      
+      // Update task to remove Jira sync
+      await db.update(tasks)
+        .set({
+          jira_synced: false,
+          jira_sync_enabled: false,
+          jira_issue_key: null,
+          jira_issue_id: null,
+          jira_last_sync: null,
+          updated_at: new Date()
+        })
+        .where(eq(tasks.id, taskId));
+
+      res.json({
+        success: true,
+        data: { message: "Task unsynced from Jira successfully" }
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to unsync task from Jira"
+      });
+    }
+  });
+
+  // Get Jira sync history for a project
+  app.get("/api/jira-service/projects/:projectId/sync-history", verifyToken, async (req, res) => {
+    try {
+      const { projectId } = req.params;
+      const history = await db.select().from(jiraSyncHistory)
+        .where(eq(jiraSyncHistory.project_id, projectId))
+        .orderBy(jiraSyncHistory.created_at);
+
+      res.json({
+        success: true,
+        data: history
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to get sync history"
+      });
+    }
+  });
+
+  // Update Jira sync status for a task
+  app.patch("/api/jira-service/projects/:projectId/tasks/:taskId/sync-status", verifyToken, async (req, res) => {
+    try {
+      const { taskId } = req.params;
+      const { jira_sync_enabled } = req.body;
+      
+      await db.update(tasks)
+        .set({
+          jira_sync_enabled: jira_sync_enabled,
+          updated_at: new Date()
+        })
+        .where(eq(tasks.id, taskId));
+
+      res.json({
+        success: true,
+        data: { message: "Sync status updated successfully" }
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to update sync status"
       });
     }
   });
