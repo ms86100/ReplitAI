@@ -1757,6 +1757,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Team service - Delete team (frontend expected endpoint)
+  app.delete("/api/teams/:teamId", async (req, res) => {
+    try {
+      const teamId = req.params.teamId;
+      
+      const deletedTeam = await db.delete(teams)
+        .where(eq(teams.id, teamId))
+        .returning();
+        
+      if (deletedTeam.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: "Team not found"
+        });
+      }
+      
+      res.json({
+        success: true,
+        data: { message: "Team deleted successfully" }
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to delete team" 
+      });
+    }
+  });
+
   app.get("/api/teams/:teamId/members", async (req, res) => {
     try {
       const teamId = req.params.teamId;
@@ -2864,6 +2892,82 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ 
         success: false,
         error: error instanceof Error ? error.message : "Failed to delete spending entry" 
+      });
+    }
+  });
+
+  // Grant module permissions (frontend expected endpoint)
+  app.post("/api/access-service/permissions/grant", async (req, res) => {
+    try {
+      const { projectId, userEmail, module, accessLevel } = req.body;
+      
+      if (!projectId || !userEmail || !module || !accessLevel) {
+        return res.status(400).json({
+          success: false,
+          error: "Project ID, user email, module, and access level are required"
+        });
+      }
+
+      // Find user by email
+      const user = await db.select().from(users).where(eq(users.email, userEmail.toLowerCase())).limit(1);
+      
+      if (user.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: "User not found"
+        });
+      }
+      
+      const userId = user[0].id;
+      
+      // Check if permission already exists
+      const existingPermission = await db.select()
+        .from(projectMembers)
+        .where(and(
+          eq(projectMembers.project_id, projectId),
+          eq(projectMembers.user_id, userId)
+        ));
+      
+      if (existingPermission.length > 0) {
+        // Update existing permission
+        await db.update(projectMembers)
+          .set({ 
+            role: accessLevel,
+            updated_at: new Date().toISOString()
+          })
+          .where(and(
+            eq(projectMembers.project_id, projectId),
+            eq(projectMembers.user_id, userId)
+          ));
+      } else {
+        // Insert new permission
+        const memberData = insertProjectMemberSchema.parse({
+          project_id: projectId,
+          user_id: userId,
+          role: accessLevel,
+          invited_by: "6dc39f1e-2af3-4b78-8488-317d90f4f538",
+          status: "active"
+        });
+        
+        await db.insert(projectMembers).values(memberData);
+      }
+      
+      res.json({
+        success: true,
+        data: { 
+          message: "Permission granted successfully",
+          permission: {
+            projectId,
+            userId,
+            module,
+            accessLevel
+          }
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to grant permission" 
       });
     }
   });
