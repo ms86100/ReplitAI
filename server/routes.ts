@@ -2765,7 +2765,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let categories = [];
       if (projectBudget) {
         const categoriesResult = await db.select().from(budgetCategories).where(eq(budgetCategories.project_budget_id, projectBudget.id));
-        categories = categoriesResult;
+        
+        // Get spending entries for each category
+        const categoriesWithSpending = await Promise.all(
+          categoriesResult.map(async (category) => {
+            const spendingEntries = await db.select().from(budgetSpending).where(eq(budgetSpending.budget_category_id, category.id));
+            return {
+              ...category,
+              budget_spending: spendingEntries
+            };
+          })
+        );
+        
+        categories = categoriesWithSpending;
         
         // Attach categories to budget object
         projectBudget = {
