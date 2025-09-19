@@ -3684,6 +3684,254 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Bulk export backlog tasks to Jira
+  app.post("/api/jira-service/projects/:projectId/bulk-export-to-jira", verifyToken, async (req, res) => {
+    console.log("=== BULK EXPORT TO JIRA START ===");
+    try {
+      const { projectId } = req.params;
+      const { taskIds } = req.body;
+      const userId = req.user?.id;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          error: "User not authenticated"
+        });
+      }
+
+      if (!taskIds || !Array.isArray(taskIds) || taskIds.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: "No task IDs provided"
+        });
+      }
+
+      // Get integration settings
+      const integration = await db.select().from(jiraIntegrations)
+        .where(eq(jiraIntegrations.project_id, projectId))
+        .limit(1);
+
+      if (integration.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: "Jira integration not configured for this project"
+        });
+      }
+
+      const integrationData = integration[0];
+      
+      // Create Jira service
+      const jiraService = new JiraService(
+        integrationData.jira_base_url,
+        integrationData.jira_email,
+        integrationData.jira_api_token,
+        integrationData.jira_project_key
+      );
+
+      // Get the specific backlog tasks to export
+      const tasksToExport = await db.select().from(taskBacklog)
+        .where(and(
+          eq(taskBacklog.project_id, projectId),
+          inArray(taskBacklog.id, taskIds)
+        ));
+
+      console.log(`Found ${tasksToExport.length} backlog tasks to export to Jira`);
+
+      const exportResults = [];
+      
+      // Field mapping for backlog tasks
+      const fieldMapping = {
+        statusMapping: {
+          'backlog': 'To Do',
+          'todo': 'To Do',
+          'in_progress': 'In Progress', 
+          'completed': 'Done',
+          'blocked': 'Blocked',
+          'on_hold': 'On Hold'
+        },
+        priorityMapping: {
+          'low': 'Low',
+          'medium': 'Medium',
+          'high': 'High',
+          'critical': 'Highest'
+        }
+      };
+
+      for (const task of tasksToExport) {
+        try {
+          let jiraIssue;
+          let operation = 'create';
+
+          // Check if this task already has a Jira issue (update scenario)
+          if (task.jira_issue_key && task.jira_issue_id) {
+            try {
+              // Try to update existing issue
+              const updateData = {
+                fields: {
+                  summary: task.title,
+                  description: task.description || '',
+                  priority: {
+                    name: fieldMapping.priorityMapping[task.priority] || 'Medium'
+                  }
+                }
+              };
+
+              await jiraService.updateIssue(task.jira_issue_id, updateData);
+              
+              // Try to transition status if needed (non-blocking)
+              if (task.status && task.status !== 'backlog') {
+                try {
+                  const transitionId = await jiraService.mapStatusToTransition(task.jira_issue_key, task.status, fieldMapping);
+                  if (transitionId) {
+                    await jiraService.transitionIssue(task.jira_issue_key, transitionId);
+                  }
+                } catch (transitionError) {
+                  console.log(`Could not transition ${task.jira_issue_key}:`, transitionError);
+                }
+              }
+
+              operation = 'update';
+              jiraIssue = {
+                id: task.jira_issue_id,
+                key: task.jira_issue_key
+              };
+            } catch (updateError) {
+              console.log(`Failed to update existing issue ${task.jira_issue_key}, will create new one`);
+              // Fall back to creating new issue
+              jiraIssue = null;
+              operation = 'create';
+            }
+          }
+
+          // Create new issue if update failed or no existing issue
+          if (!jiraIssue) {
+            const issueData = {
+              fields: {
+                project: { key: integrationData.jira_project_key },
+                summary: task.title,
+                description: task.description || '',
+                issuetype: { name: 'Task' },
+                priority: {
+                  name: fieldMapping.priorityMapping[task.priority] || 'Medium'
+                }
+              }
+            };
+
+            jiraIssue = await jiraService.createIssue(issueData);
+            
+            // Set initial status if not default "To Do"
+            if (task.status && task.status !== 'backlog' && task.status !== 'todo') {
+              try {
+                const transitionId = await jiraService.mapStatusToTransition(jiraIssue.key, task.status, fieldMapping);
+                if (transitionId) {
+                  await jiraService.transitionIssue(jiraIssue.key, transitionId);
+                }
+              } catch (transitionError) {
+                console.log(`Could not set initial status for ${jiraIssue.key}:`, transitionError);
+              }
+            }
+            
+            operation = 'create';
+          }
+
+          // Update the backlog task with Jira sync information
+          await db.update(taskBacklog)
+            .set({
+              jira_synced: true,
+              jira_issue_key: jiraIssue.key,
+              jira_issue_id: jiraIssue.id,
+              jira_sync_enabled: true,
+              jira_last_sync: new Date(),
+              updated_at: new Date()
+            })
+            .where(eq(taskBacklog.id, task.id));
+
+          // Log sync history
+          const syncHistoryData = insertJiraSyncHistorySchema.parse({
+            project_id: projectId,
+            task_id: task.id,
+            jira_issue_key: jiraIssue.key,
+            sync_direction: 'to_jira',
+            operation: operation,
+            status: 'success',
+            sync_data: JSON.stringify({
+              jira_issue_id: jiraIssue.id,
+              task_title: task.title,
+              operation: operation
+            }),
+            performed_by: userId
+          });
+
+          await db.insert(jiraSyncHistory).values(syncHistoryData);
+
+          exportResults.push({
+            task_id: task.id,
+            task_title: task.title,
+            jira_issue_key: jiraIssue.key,
+            jira_issue_id: jiraIssue.id,
+            operation: operation,
+            status: 'success'
+          });
+
+          console.log(`${operation} ${task.title} -> ${jiraIssue.key}`);
+
+        } catch (error) {
+          console.error(`Failed to export task ${task.title}:`, error);
+          
+          exportResults.push({
+            task_id: task.id,
+            task_title: task.title,
+            status: 'failed',
+            error: error instanceof Error ? error.message : 'Unknown error'
+          });
+
+          // Log failed sync
+          try {
+            const syncHistoryData = insertJiraSyncHistorySchema.parse({
+              project_id: projectId,
+              task_id: task.id,
+              jira_issue_key: '',
+              sync_direction: 'to_jira',
+              operation: 'export',
+              status: 'failed',
+              sync_data: JSON.stringify({
+                task_title: task.title,
+                error: error instanceof Error ? error.message : 'Unknown error'
+              }),
+              performed_by: userId
+            });
+
+            await db.insert(jiraSyncHistory).values(syncHistoryData);
+          } catch (logError) {
+            console.error('Failed to log sync error:', logError);
+          }
+        }
+      }
+
+      const successCount = exportResults.filter(r => r.status === 'success').length;
+      const failureCount = exportResults.filter(r => r.status === 'failed').length;
+
+      console.log(`Bulk export complete: ${successCount} succeeded, ${failureCount} failed`);
+
+      res.json({
+        success: true,
+        data: {
+          total: tasksToExport.length,
+          succeeded: successCount,
+          failed: failureCount,
+          results: exportResults
+        }
+      });
+
+    } catch (error) {
+      console.error("Bulk export to Jira failed:", error);
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to export to Jira"
+      });
+    }
+  });
+
   // Full bidirectional sync
   app.post("/api/jira-service/projects/:projectId/full-sync", verifyToken, async (req, res) => {
     console.log("=== FULL SYNC START ===");

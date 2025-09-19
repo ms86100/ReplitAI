@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, ArrowRight, Calendar, User } from 'lucide-react';
+import { Plus, Edit2, Trash2, ArrowRight, Calendar, User, Download, Upload, CheckSquare, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -29,6 +29,11 @@ interface BacklogItem {
   source_id: string;
   created_at: string;
   updated_at: string;
+  jira_synced?: boolean;
+  jira_issue_key?: string;
+  jira_issue_id?: string;
+  jira_sync_enabled?: boolean;
+  jira_last_sync?: string;
 }
 
 interface Stakeholder {
@@ -61,8 +66,12 @@ export function TaskBacklog({ projectId }: TaskBacklogProps) {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showMoveDialog, setShowMoveDialog] = useState(false);
+  const [showExportDialog, setShowExportDialog] = useState(false);
   const [editingItem, setEditingItem] = useState<BacklogItem | null>(null);
   const [movingItem, setMovingItem] = useState<BacklogItem | null>(null);
+  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportProgress, setExportProgress] = useState<any[]>([]);
   
   const [formData, setFormData] = useState({
     title: '',
@@ -265,6 +274,120 @@ export function TaskBacklog({ projectId }: TaskBacklogProps) {
     setShowMoveDialog(true);
   };
 
+  // Multi-select functions
+  const toggleSelectItem = (itemId: string) => {
+    const newSelected = new Set(selectedItems);
+    if (newSelected.has(itemId)) {
+      newSelected.delete(itemId);
+    } else {
+      newSelected.add(itemId);
+    }
+    setSelectedItems(newSelected);
+  };
+
+  const selectAllItems = () => {
+    if (selectedItems.size === filteredBacklogItems.length) {
+      setSelectedItems(new Set());
+    } else {
+      setSelectedItems(new Set(filteredBacklogItems.map(item => item.id)));
+    }
+  };
+
+  // Sync operations
+  const handleImportFromJira = async () => {
+    try {
+      const response = await fetch(`/api/jira-service/projects/${projectId}/import-from-jira`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const result = await response.json();
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to import from Jira');
+      }
+
+      toast({
+        title: 'Success',
+        description: `Imported ${result.data.imported} tasks from Jira. ${result.data.skipped} tasks were skipped.`
+      });
+
+      fetchBacklogItems();
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to import from Jira',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const openExportDialog = () => {
+    if (selectedItems.size === 0) {
+      toast({
+        title: 'No items selected',
+        description: 'Please select at least one backlog item to export to Jira.',
+        variant: 'destructive'
+      });
+      return;
+    }
+    setShowExportDialog(true);
+  };
+
+  const handleExportToJira = async () => {
+    if (selectedItems.size === 0) return;
+
+    setIsExporting(true);
+    setExportProgress([]);
+    
+    try {
+      const selectedItemsArray = Array.from(selectedItems);
+      
+      const response = await fetch(`/api/jira-service/projects/${projectId}/bulk-export-to-jira`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          taskIds: selectedItemsArray
+        })
+      });
+
+      const result = await response.json();
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to export to Jira');
+      }
+
+      setExportProgress(result.data.results || []);
+      
+      const successCount = result.data.results?.filter((r: any) => r.status === 'success').length || 0;
+      const failureCount = result.data.results?.filter((r: any) => r.status === 'failed').length || 0;
+
+      toast({
+        title: 'Export Complete',
+        description: `Successfully exported ${successCount} tasks. ${failureCount} failed.`
+      });
+
+      // Refresh backlog to show updated sync status
+      fetchBacklogItems();
+      setSelectedItems(new Set());
+      
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to export to Jira',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   const getPriorityBadgeVariant = (priority: string) => {
     switch (priority) {
       case 'critical': return 'destructive';
@@ -285,6 +408,10 @@ export function TaskBacklog({ projectId }: TaskBacklogProps) {
     item.description?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const getSelectedItemsForExport = () => {
+    return backlogItems.filter(item => selectedItems.has(item.id));
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -292,14 +419,39 @@ export function TaskBacklog({ projectId }: TaskBacklogProps) {
           <h2 className="text-2xl font-bold">Task Backlog</h2>
           <p className="text-muted-foreground">Manage your project backlog and move items to milestones</p>
         </div>
-        <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-          <DialogTrigger asChild>
-            <Button onClick={() => setShowAddDialog(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Backlog Item
+        <div className="flex items-center gap-2">
+          {/* Sync Operations */}
+          <div className="flex items-center gap-1 mr-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleImportFromJira}
+              title="Import tasks from Jira project"
+              data-testid="button-import-from-jira"
+            >
+              <Download className="h-4 w-4 mr-1" />
+              Import from Jira
             </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[600px]">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={openExportDialog}
+              disabled={selectedItems.size === 0}
+              title="Export selected tasks to Jira"
+              data-testid="button-export-to-jira"
+            >
+              <Upload className="h-4 w-4 mr-1" />
+              Export to Jira ({selectedItems.size})
+            </Button>
+          </div>
+          <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+            <DialogTrigger asChild>
+              <Button onClick={() => setShowAddDialog(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Backlog Item
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[600px]">
             <DialogHeader>
               <DialogTitle>Add Backlog Item</DialogTitle>
             </DialogHeader>
@@ -371,11 +523,12 @@ export function TaskBacklog({ projectId }: TaskBacklogProps) {
                 <Button type="submit">Add Item</Button>
               </div>
             </form>
-          </DialogContent>
-        </Dialog>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
-      {/* Search */}
+      {/* Search and Multi-select */}
       <div className="flex items-center gap-4">
         <Input
           placeholder="Search backlog items..."
@@ -383,28 +536,76 @@ export function TaskBacklog({ projectId }: TaskBacklogProps) {
           onChange={(e) => setSearchTerm(e.target.value)}
           className="max-w-sm"
         />
+        {filteredBacklogItems.length > 0 && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={selectAllItems}
+            className="flex items-center gap-1"
+            data-testid="button-select-all"
+          >
+            {selectedItems.size === filteredBacklogItems.length ? (
+              <CheckSquare className="h-4 w-4" />
+            ) : (
+              <Square className="h-4 w-4" />
+            )}
+            {selectedItems.size === filteredBacklogItems.length ? 'Unselect All' : 'Select All'} ({filteredBacklogItems.length})
+          </Button>
+        )}
+        {selectedItems.size > 0 && (
+          <span className="text-sm text-muted-foreground">
+            {selectedItems.size} items selected
+          </span>
+        )}
       </div>
 
       <div className="grid gap-4">
         {filteredBacklogItems.map((item) => (
-          <Card key={item.id}>
+          <Card key={item.id} className={selectedItems.has(item.id) ? 'ring-2 ring-primary' : ''}>
             <CardHeader>
               <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <CardTitle className="text-lg">{item.title}</CardTitle>
-                  {item.description && (
-                    <p className="text-sm text-muted-foreground mt-1">{item.description}</p>
-                  )}
-                  <div className="flex flex-wrap items-center gap-2 mt-3">
-                    <Badge variant={getPriorityBadgeVariant(item.priority)}>
-                      {item.priority}
-                    </Badge>
-                    {item.source_type === 'action_item' && (
-                      <Badge variant="outline">From Discussion</Badge>
+                <div className="flex items-start gap-3 flex-1">
+                  <button
+                    onClick={() => toggleSelectItem(item.id)}
+                    className="mt-1 hover:bg-muted rounded p-1 transition-colors"
+                    data-testid={`checkbox-${item.id}`}
+                  >
+                    {selectedItems.has(item.id) ? (
+                      <CheckSquare className="h-4 w-4 text-primary" />
+                    ) : (
+                      <Square className="h-4 w-4 text-muted-foreground" />
                     )}
-                    {item.source_type === 'retrospective' && (
-                      <Badge variant="outline">Converted from Retrospective</Badge>
+                  </button>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <CardTitle className="text-lg">{item.title}</CardTitle>
+                      {item.jira_issue_key && (
+                        <Badge variant="secondary" className="text-xs">
+                          {item.jira_issue_key}
+                        </Badge>
+                      )}
+                      {item.jira_synced && (
+                        <Badge variant="outline" className="text-xs bg-blue-50 border-blue-200 text-blue-700">
+                          Imported from Jira
+                        </Badge>
+                      )}
+                    </div>
+                    {item.description && (
+                      <p className="text-sm text-muted-foreground mt-1">{item.description}</p>
                     )}
+                    <div className="flex flex-wrap items-center gap-2 mt-3">
+                      <Badge variant={getPriorityBadgeVariant(item.priority)}>
+                        {item.priority}
+                      </Badge>
+                      {item.source_type === 'action_item' && (
+                        <Badge variant="outline">From Discussion</Badge>
+                      )}
+                      {item.source_type === 'retrospective' && (
+                        <Badge variant="outline">Converted from Retrospective</Badge>
+                      )}
+                      {item.source_type === 'jira' && !item.jira_synced && (
+                        <Badge variant="outline">From Jira</Badge>
+                      )}
                     {item.target_date && (
                       <div className="text-xs text-muted-foreground flex items-center gap-1">
                         <Calendar className="h-3 w-3" />
@@ -416,7 +617,8 @@ export function TaskBacklog({ projectId }: TaskBacklogProps) {
                         <User className="h-3 w-3" />
                         {getStakeholderName(item.owner_id)}
                       </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-1">
@@ -587,6 +789,76 @@ export function TaskBacklog({ projectId }: TaskBacklogProps) {
                 disabled={!selectedMilestone}
               >
                 Move to Milestone
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Export to Jira Confirmation Dialog */}
+      <Dialog open={showExportDialog} onOpenChange={setShowExportDialog}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Export to Jira</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              You are about to export {selectedItems.size} backlog items to Jira. This will create or update issues in your connected Jira project.
+            </p>
+            
+            <div className="max-h-40 overflow-y-auto border rounded p-2">
+              <h4 className="font-medium mb-2">Selected Items:</h4>
+              {getSelectedItemsForExport().map((item) => (
+                <div key={item.id} className="text-sm py-1 flex items-center gap-2">
+                  <span>• {item.title}</span>
+                  {item.jira_issue_key && (
+                    <Badge variant="secondary" className="text-xs">
+                      {item.jira_issue_key}
+                    </Badge>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {isExporting && (
+              <div className="space-y-2">
+                <div className="text-sm font-medium">Export Progress:</div>
+                <div className="max-h-32 overflow-y-auto space-y-1">
+                  {exportProgress.map((result, index) => (
+                    <div key={index} className="text-xs flex items-center gap-2">
+                      <span className={result.status === 'success' ? 'text-green-600' : 'text-red-600'}>
+                        {result.status === 'success' ? '✓' : '✗'}
+                      </span>
+                      <span>{result.task_title}</span>
+                      {result.jira_issue_key && (
+                        <Badge variant="secondary" className="text-xs">
+                          {result.jira_issue_key}
+                        </Badge>
+                      )}
+                      {result.error && (
+                        <span className="text-red-600">({result.error})</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-end space-x-2">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => setShowExportDialog(false)}
+                disabled={isExporting}
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleExportToJira}
+                disabled={isExporting}
+                data-testid="button-confirm-export"
+              >
+                {isExporting ? 'Exporting...' : 'Export to Jira'}
               </Button>
             </div>
           </div>
