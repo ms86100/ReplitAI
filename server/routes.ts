@@ -8,6 +8,8 @@ import { BackupAnalyzer } from "./services/backup-analyzer";
 import { DatabaseRestorer } from "./services/database-restorer";
 import { DatabaseVerifier } from "./services/verification";
 import { insertMigrationJobSchema, projects, insertProjectSchema, budgetTypeConfig, projectBudgets, budgetCategories, budgetSpending, budgetReceipts, insertBudgetCategorySchema, insertBudgetSpendingSchema, tasks, milestones, stakeholders, riskRegister, projectDiscussions, discussionActionItems, discussionChangeLog, projectMembers, taskBacklog, teams, teamMembers, teamCapacityIterations, teamCapacityMembers, iterationWeeks, weeklyAvailability, insertTaskSchema, insertMilestoneSchema, insertStakeholderSchema, insertRiskSchema, insertProjectDiscussionSchema, insertDiscussionActionItemSchema, insertProjectMemberSchema, insertTaskBacklogSchema, insertTeamSchema, insertTeamMemberSchema, insertTeamCapacityIterationSchema, insertTeamCapacityMemberSchema, insertIterationWeekSchema, insertWeeklyAvailabilitySchema, users } from "@shared/schema";
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 import { neon } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
 import * as schema from '../shared/schema';
@@ -314,7 +316,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = userResult[0];
       
       // Verify password using bcrypt
-      const bcrypt = require('bcryptjs');
       const isValidPassword = await bcrypt.compare(password, user.password_hash);
       
       if (!isValidPassword) {
@@ -325,7 +326,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Generate JWT token
-      const jwt = require('jsonwebtoken');
       const token = jwt.sign(
         { 
           userId: user.id, 
@@ -387,7 +387,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Hash password
-      const bcrypt = require('bcryptjs');
       const saltRounds = 10;
       const hashedPassword = await bcrypt.hash(password, saltRounds);
 
@@ -403,7 +402,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const createdUser = newUser[0];
 
       // Generate JWT token
-      const jwt = require('jsonwebtoken');
       const token = jwt.sign(
         { 
           userId: createdUser.id, 
