@@ -122,11 +122,11 @@ export function ProjectBudgetManagement({ projectId }: ProjectBudgetManagementPr
       setLoading(true);
       const result = await budgetApi.getProjectBudget(projectId);
 
-      setBudget(result.data.budget);
-      setBudgetTypes(result.data.budgetTypes || []);
+      setBudget(result.data?.budget || null);
+      setBudgetTypes(result.data?.budgetTypes || []);
       
       // Calculate analytics manually from budget data
-      const budgetData = result.data.budget;
+      const budgetData = result.data?.budget;
       let calculatedAnalytics = null;
       
       if (budgetData && budgetData.budget_categories) {

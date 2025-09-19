@@ -339,14 +339,16 @@ const ProjectsList = () => {
       {/* Projects Grid */}
 
       {projects.length === 0 ? (
-        <Card>
+        <Card className="airbus-card">
           <CardContent className="flex flex-col items-center justify-center py-16">
-            <FolderOpen className="h-16 w-16 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No projects yet</h3>
-            <p className="text-muted-foreground text-center mb-4">
-              Get started by creating your first project
+            <div className="h-16 w-16 rounded-full bg-gradient-to-r from-airbus-primary to-airbus-accent flex items-center justify-center mb-6">
+              <FolderOpen className="h-8 w-8 text-white" />
+            </div>
+            <h3 className="text-xl font-bold mb-2 text-airbus-primary">No projects yet</h3>
+            <p className="text-muted-foreground text-center mb-6 max-w-md">
+              Get started by creating your first project to organize your team's work
             </p>
-            <Button onClick={() => setShowCreateDialog(true)} className="bg-brand-primary hover:bg-brand-primary/90 text-brand-on-primary">
+            <Button onClick={() => setShowCreateDialog(true)} className="airbus-btn-primary">
               <Plus className="h-4 w-4 mr-2" />
               Create Project
             </Button>
@@ -355,21 +357,26 @@ const ProjectsList = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {projects.map((project) => (
-            <Card key={project.id} className="hover:shadow-lg transition-shadow cursor-pointer">
-              <CardHeader>
+            <Card key={project.id} className="airbus-card cursor-pointer group" data-testid={`card-project-${project.id}`}>
+              <CardHeader className="pb-4">
                 <div className="flex items-start justify-between">
                   <CardTitle 
-                    className="text-lg font-semibold truncate cursor-pointer hover:text-brand-primary"
+                    className="text-xl font-bold truncate cursor-pointer text-airbus-primary group-hover:text-airbus-accent transition-colors"
                     onClick={() => setLocation(`/project/${project.id}`)}
+                    data-testid={`link-project-${project.id}`}
                   >
                     {project.name}
                   </CardTitle>
-                  <div className="flex gap-1">
+                  <div className="flex gap-2">
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() => openEditDialog(project)}
-                      className="h-8 w-8 p-0"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openEditDialog(project);
+                      }}
+                      className="h-8 w-8 p-0 hover:bg-airbus-light hover:text-airbus-primary"
+                      data-testid={`button-edit-${project.id}`}
                     >
                       <Edit className="h-4 w-4" />
                     </Button>
@@ -403,11 +410,11 @@ const ProjectsList = () => {
                     </AlertDialog>
                   </div>
                 </div>
-                <div className="flex gap-2 flex-wrap">
-                  <Badge className={getStatusColor(project.status)}>
+                <div className="flex gap-3 flex-wrap mt-3">
+                  <Badge className={`${getStatusColor(project.status)} font-medium px-3 py-1`}>
                     {project.status || 'planning'}
                   </Badge>
-                  <Badge className={getPriorityColor(project.priority)}>
+                  <Badge className={`${getPriorityColor(project.priority)} font-medium px-3 py-1`}>
                     {project.priority || 'medium'}
                   </Badge>
                 </div>

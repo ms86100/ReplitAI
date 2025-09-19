@@ -129,8 +129,13 @@ const Dashboard = () => {
     try {
       const response = await apiClient.getProjectStats();
       
-      if (response.success) {
-        setStats(response.data);
+      if (response.success && response.data) {
+        setStats({
+          totalProjects: response.data.totalProjects || 0,
+          activeProjects: response.data.activeProjects || 0,
+          completedProjects: response.data.completedProjects || 0,
+          totalUsers: response.data.totalUsers || 0,
+        });
       } else {
         console.error('Error fetching stats:', response.error);
       }
@@ -200,7 +205,7 @@ const Dashboard = () => {
       {/* Welcome Section */}
       <div className="bg-gradient-to-r from-primary to-accent rounded-lg p-6 text-white">
         <h1 className="text-3xl font-bold mb-2">
-          Welcome to Purple Cow
+          Welcome to Airbus Project Hub
         </h1>
         <p className="text-white/90 mb-4">
           {userRole === 'admin' 
@@ -224,53 +229,61 @@ const Dashboard = () => {
       {/* Stats Grid */}
       {userRole === 'admin' && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Projects</CardTitle>
-              <FolderOpen className="h-4 w-4 text-muted-foreground" />
+          <Card className="airbus-card group">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+              <CardTitle className="text-sm font-bold text-airbus-primary uppercase tracking-wide">Total Projects</CardTitle>
+              <div className="h-10 w-10 rounded-lg bg-gradient-to-r from-airbus-primary to-airbus-accent flex items-center justify-center group-hover:scale-110 transition-transform">
+                <FolderOpen className="h-5 w-5 text-white" />
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.totalProjects}</div>
-              <p className="text-xs text-muted-foreground">
+              <div className="text-3xl font-bold text-airbus-primary mb-1">{stats.totalProjects}</div>
+              <p className="text-sm text-muted-foreground font-medium">
                 Across all teams
               </p>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Active Projects</CardTitle>
-              <Clock className="h-4 w-4 text-muted-foreground" />
+          <Card className="airbus-card group">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+              <CardTitle className="text-sm font-bold text-airbus-primary uppercase tracking-wide">Active Projects</CardTitle>
+              <div className="h-10 w-10 rounded-lg bg-gradient-to-r from-green-500 to-emerald-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <Clock className="h-5 w-5 text-white" />
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.activeProjects}</div>
-              <p className="text-xs text-muted-foreground">
+              <div className="text-3xl font-bold text-green-600 mb-1">{stats.activeProjects}</div>
+              <p className="text-sm text-muted-foreground font-medium">
                 Currently in progress
               </p>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Completed</CardTitle>
-              <BarChart3 className="h-4 w-4 text-muted-foreground" />
+          <Card className="airbus-card group">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+              <CardTitle className="text-sm font-bold text-airbus-primary uppercase tracking-wide">Completed</CardTitle>
+              <div className="h-10 w-10 rounded-lg bg-gradient-to-r from-blue-500 to-indigo-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <BarChart3 className="h-5 w-5 text-white" />
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.completedProjects}</div>
-              <p className="text-xs text-muted-foreground">
+              <div className="text-3xl font-bold text-blue-600 mb-1">{stats.completedProjects}</div>
+              <p className="text-sm text-muted-foreground font-medium">
                 Successfully delivered
               </p>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
+          <Card className="airbus-card group">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+              <CardTitle className="text-sm font-bold text-airbus-primary uppercase tracking-wide">Total Users</CardTitle>
+              <div className="h-10 w-10 rounded-lg bg-gradient-to-r from-purple-500 to-pink-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <Users className="h-5 w-5 text-white" />
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.totalUsers}</div>
-              <p className="text-xs text-muted-foreground">
+              <div className="text-3xl font-bold text-purple-600 mb-1">{stats.totalUsers}</div>
+              <p className="text-sm text-muted-foreground font-medium">
                 Registered team members
               </p>
             </CardContent>
@@ -284,19 +297,21 @@ const Dashboard = () => {
       )}
 
       {/* Recent Projects */}
-      <Card>
+      <Card className="airbus-card">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="flex items-center gap-2">
-                <FolderOpen className="h-5 w-5" />
+              <CardTitle className="flex items-center gap-3 text-airbus-primary">
+                <div className="h-8 w-8 rounded-lg bg-gradient-to-r from-airbus-primary to-airbus-accent flex items-center justify-center">
+                  <FolderOpen className="h-4 w-4 text-white" />
+                </div>
                 Recent Projects
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-muted-foreground mt-2">
                 Latest projects in the system
               </CardDescription>
             </div>
-            <Button variant="outline" onClick={() => setLocation('/projects')}>
+            <Button variant="outline" className="airbus-btn-secondary" onClick={() => setLocation('/projects')}>
               View All Projects
             </Button>
           </div>
@@ -312,8 +327,9 @@ const Dashboard = () => {
               {projects.map((project) => (
                 <Card 
                   key={project.id} 
-                  className="hover:shadow-md transition-shadow border border-border cursor-pointer"
+                  className="airbus-card cursor-pointer group"
                   onClick={() => setLocation(`/project/${project.id}`)}
+                  data-testid={`card-project-${project.id}`}
                 >
                   <CardHeader className="pb-3">
                     <div className="flex items-start justify-between">
