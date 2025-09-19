@@ -3046,21 +3046,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create or update Jira integration settings
   app.post("/api/jira-service/projects/:projectId/integration", verifyToken, async (req, res) => {
     try {
+      console.log('=== JIRA INTEGRATION REQUEST START ===');
+      console.log('Project ID:', req.params.projectId);
+      console.log('User ID:', req.user?.id);
+      console.log('Request body keys:', Object.keys(req.body));
+      
       const { projectId } = req.params;
       const { jira_base_url, jira_email, jira_api_token, jira_project_key } = req.body;
       
+      console.log('Parsed credentials:', {
+        jira_base_url,
+        jira_email,
+        jira_project_key,
+        jira_api_token: jira_api_token ? `${jira_api_token.substring(0, 10)}...` : 'undefined'
+      });
+      
       if (!jira_base_url || !jira_email || !jira_api_token || !jira_project_key) {
+        console.log('Missing required fields validation failed');
         return res.status(400).json({
           success: false,
           error: "Jira base URL, email, API token, and project key are required"
         });
       }
 
+      console.log('Creating JiraService instance...');
       // Test the connection first
       const jiraService = new JiraService(jira_base_url, jira_email, jira_api_token, jira_project_key);
+      console.log('Testing connection...');
       const connectionTest = await jiraService.testConnection();
+      console.log('Connection test result:', connectionTest);
       
       if (!connectionTest.success) {
+        console.log('Connection test failed, returning error');
         return res.status(400).json({
           success: false,
           error: `Jira connection failed: ${connectionTest.error}`
