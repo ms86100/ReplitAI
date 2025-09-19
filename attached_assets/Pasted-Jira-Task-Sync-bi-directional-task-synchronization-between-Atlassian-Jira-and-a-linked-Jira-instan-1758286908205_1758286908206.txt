@@ -1,0 +1,49 @@
+Jira Task Sync — bi-directional task synchronization between Atlassian Jira and a linked Jira instance
+
+Description (for backlog / Replit)
+
+Add a Jira Task Sync feature to enable bi-directional synchronization of tasks between an Atlassian Jira project and a linked external Jira project. This lets teams collaborate across separate Jira instances while keeping control over which tasks are shared.
+
+Key behavior
+
+Project-level setup: A project admin links the Atlassian Jira project to an external Jira project by entering the necessary Jira API credentials in Project Settings.
+
+User-controlled sync: When creating or editing a task/story in the backlog, present a clear prompt or toggle: “Do you want to sync this task with the external Jira?”
+
+Selecting Yes pushes the task to the linked Jira project and creates a linked issue.
+
+Selecting No keeps the task local to the current Jira instance.
+
+Field mapping & creation: Use a preconfigured mapping to translate task fields (Title, Description, Priority, etc.) into the target Jira fields and create the issue in the designated external Jira project.
+
+Bi-directional updates:
+
+Changes in the source Jira project (status, comments, description edits, etc.) are synced to the linked external Jira issue.
+
+Updates made in the linked external Jira issue are synced back to the source Jira project so both systems remain consistent.
+
+Visual status indicator: Display an “In sync with external Jira” icon on the task card (hover reveals the external Jira issue key and link).
+
+Safety controls: Prevent accidental duplicates by requiring explicit user confirmation before creating the external Jira issue. Provide clear error/sync logs if a sync fails.
+
+Acceptance criteria (suggested)
+
+Project settings include a secure form to store external Jira API credentials and configure the target external Jira project.
+
+Backlog and create/edit flows show a sync prompt/toggle that defaults to No.
+
+When a user opts in, an issue is created in the external Jira with mapped fields and the source task stores the external Jira issue key/link.
+
+Edits on either side (source Jira ↔ external Jira) propagate correctly within a reasonable time window; conflicts are handled with a clear policy/log.
+
+Task cards show a sync icon with the external Jira key on hover; clicking the icon opens the external Jira issue.
+
+Failures surface readable error messages and retry/log options for admins.
+
+Benefits
+
+Enables controlled cross-instance collaboration with external Jira teams.
+
+Avoids accidental duplicates by requiring per-task confirmation.
+
+Keeps both Jira instances aligned through automatic, two-way updates.

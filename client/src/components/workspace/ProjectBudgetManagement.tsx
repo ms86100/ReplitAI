@@ -623,11 +623,11 @@ export function ProjectBudgetManagement({ projectId }: ProjectBudgetManagementPr
                           </div>
                           <div>
                             <span className="text-muted-foreground">Spent:</span>
-                            <div className="font-medium">₹{(parseFloat(String(category.amount_spent || 0))).toLocaleString()}</div>
+                            <div className="font-medium">₹{(category.budget_spending?.reduce((sum: number, spending: any) => sum + parseFloat(spending.amount || 0), 0) || 0).toLocaleString()}</div>
                           </div>
                           <div>
                             <span className="text-muted-foreground">Remaining:</span>
-                            <div className="font-medium">₹{(parseFloat(String(category.budget_allocated || 0)) - parseFloat(String(category.amount_spent || 0))).toLocaleString()}</div>
+                            <div className="font-medium">₹{(parseFloat(String(category.budget_allocated || 0)) - (category.budget_spending?.reduce((sum: number, spending: any) => sum + parseFloat(spending.amount || 0), 0) || 0)).toLocaleString()}</div>
                           </div>
                         </div>
                         {category.comments && (
@@ -710,7 +710,7 @@ export function ProjectBudgetManagement({ projectId }: ProjectBudgetManagementPr
                               {category.name} ({category.budget_type_code})
                               <span className="text-xs text-muted-foreground ml-2">
                                 Budget: {formatCurrency(category.budget_allocated)} | 
-                                Spent: {formatCurrency(category.amount_spent)}
+                                Spent: {formatCurrency(category.budget_spending?.reduce((sum: number, spending: any) => sum + parseFloat(spending.amount || 0), 0) || 0)}
                               </span>
                             </Label>
                           </div>
