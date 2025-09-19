@@ -412,6 +412,9 @@ export function TaskBacklog({ projectId }: TaskBacklogProps) {
     return backlogItems.filter(item => selectedItems.has(item.id));
   };
 
+  console.log("🔧 TaskBacklog component rendering with sync operations");
+  console.log("📊 Selected items count:", selectedItems.size);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -421,7 +424,7 @@ export function TaskBacklog({ projectId }: TaskBacklogProps) {
         </div>
         <div className="flex items-center gap-2">
           {/* Sync Operations */}
-          <div className="flex items-center gap-1 mr-2">
+          <div className="flex items-center gap-1 mr-2" style={{border: "2px solid red", padding: "4px"}}>
             <Button
               variant="outline"
               size="sm"
