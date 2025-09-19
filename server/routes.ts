@@ -11,10 +11,8 @@ import { DatabaseVerifier } from "./services/verification";
 import { insertMigrationJobSchema, projects, insertProjectSchema, budgetTypeConfig, projectBudgets, budgetCategories, budgetSpending, budgetReceipts, insertBudgetCategorySchema, insertBudgetSpendingSchema, tasks, milestones, stakeholders, riskRegister, projectDiscussions, discussionActionItems, discussionChangeLog, projectMembers, taskBacklog, teams, teamMembers, teamCapacityIterations, teamCapacityMembers, iterationWeeks, weeklyAvailability, insertTaskSchema, insertMilestoneSchema, insertStakeholderSchema, insertRiskSchema, insertProjectDiscussionSchema, insertDiscussionActionItemSchema, insertProjectMemberSchema, insertTaskBacklogSchema, insertTeamSchema, insertTeamMemberSchema, insertTeamCapacityIterationSchema, insertTeamCapacityMemberSchema, insertIterationWeekSchema, insertWeeklyAvailabilitySchema, users } from "@shared/schema";
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { neon } from '@neondatabase/serverless';
-import { drizzle } from 'drizzle-orm/neon-http';
-import * as schema from '../shared/schema';
 import { eq, and } from 'drizzle-orm';
+import { db } from './db';
 
 const upload = multer({ 
   dest: 'uploads/',
@@ -24,9 +22,6 @@ const upload = multer({
 const backupAnalyzer = new BackupAnalyzer();
 const databaseRestorer = new DatabaseRestorer();
 const databaseVerifier = new DatabaseVerifier();
-
-const sql = neon(process.env.DATABASE_URL!);
-const db = drizzle(sql, { schema });
 
 export async function registerRoutes(app: Express): Promise<Server> {
   
