@@ -1,0 +1,41 @@
+ Running on localhost but VITE_API_URL is not configured!
+overrideMethod @ hook.js:608Understand this error
+hook.js:608 💡 Please create a .env file with: VITE_API_URL=http://localhost:YOUR_BACKEND_PORT
+overrideMethod @ hook.js:608Understand this error
+hook.js:608 📝 Example: VITE_API_URL=http://localhost:5000 (for Replit unified server)
+overrideMethod @ hook.js:608Understand this error
+hook.js:608 📝 Example: VITE_API_URL=http://localhost:3001 (for separate backend)
+overrideMethod @ hook.js:608Understand this error
+Auth.tsx:31 === LOGIN ATTEMPT START ===
+Auth.tsx:32 Email: a@b.com
+api/auth-service/login:1  Failed to load resource: the server responded with a status of 500 (Internal Server Error)Understand this error
+Auth.tsx:37 === LOGIN RESPONSE ===
+Auth.tsx:38 Error: Error connecting to database: fetch failed
+Auth.tsx:41 === LOGIN FAILED ===
+Auth.tsx:31 === LOGIN ATTEMPT START ===
+Auth.tsx:32 Email: a@b.com
+api.ts:89  POST http://localhost:3001/api/auth-service/login 500 (Internal Server Error)
+doFetch @ api.ts:89
+makeRequest @ api.ts:104
+await in makeRequest
+login @ api.ts:203
+signIn @ useApiAuth.tsx:157
+handleSignIn @ Auth.tsx:36
+callCallback2 @ chunk-276SZO74.js?v=b3c1b53f:3674
+invokeGuardedCallbackDev @ chunk-276SZO74.js?v=b3c1b53f:3699
+invokeGuardedCallback @ chunk-276SZO74.js?v=b3c1b53f:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-276SZO74.js?v=b3c1b53f:3736
+executeDispatch @ chunk-276SZO74.js?v=b3c1b53f:7014
+processDispatchQueueItemsInOrder @ chunk-276SZO74.js?v=b3c1b53f:7034
+processDispatchQueue @ chunk-276SZO74.js?v=b3c1b53f:7043
+dispatchEventsForPlugins @ chunk-276SZO74.js?v=b3c1b53f:7051
+(anonymous) @ chunk-276SZO74.js?v=b3c1b53f:7174
+batchedUpdates$1 @ chunk-276SZO74.js?v=b3c1b53f:18913
+batchedUpdates @ chunk-276SZO74.js?v=b3c1b53f:3579
+dispatchEventForPluginEventSystem @ chunk-276SZO74.js?v=b3c1b53f:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-276SZO74.js?v=b3c1b53f:5478
+dispatchEvent @ chunk-276SZO74.js?v=b3c1b53f:5472
+dispatchDiscreteEvent @ chunk-276SZO74.js?v=b3c1b53f:5449Understand this error
+Auth.tsx:37 === LOGIN RESPONSE ===
+Auth.tsx:38 Error: Error connecting to database: fetch failed
+Auth.tsx:41 === LOGIN FAILED ===
