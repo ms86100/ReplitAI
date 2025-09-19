@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, ArrowRight, Calendar, User } from 'lucide-react';
+import { Plus, Edit2, Trash2, ArrowRight, Calendar, User, Download, Upload, CheckSquare, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { SimpleSelect, SimpleSelectItem } from '@/components/ui/simple-select';
 import { apiClient } from '@/services/api';
@@ -61,8 +61,12 @@ export function TaskBacklog({ projectId }: TaskBacklogProps) {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showMoveDialog, setShowMoveDialog] = useState(false);
+  const [showExportDialog, setShowExportDialog] = useState(false);
   const [editingItem, setEditingItem] = useState<BacklogItem | null>(null);
   const [movingItem, setMovingItem] = useState<BacklogItem | null>(null);
+  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportProgress, setExportProgress] = useState<any[]>([]);
   
   const [formData, setFormData] = useState({
     title: '',
@@ -280,6 +284,127 @@ export function TaskBacklog({ projectId }: TaskBacklogProps) {
     return stakeholder?.name || 'Unknown';
   };
 
+  // Multi-select functions
+  const toggleSelectItem = (itemId: string) => {
+    const newSelected = new Set(selectedItems);
+    if (newSelected.has(itemId)) {
+      newSelected.delete(itemId);
+    } else {
+      newSelected.add(itemId);
+    }
+    setSelectedItems(newSelected);
+  };
+
+  const selectAllItems = () => {
+    if (selectedItems.size === filteredBacklogItems.length) {
+      setSelectedItems(new Set());
+    } else {
+      setSelectedItems(new Set(filteredBacklogItems.map(item => item.id)));
+    }
+  };
+
+  // Import from Jira
+  const handleImportFromJira = async () => {
+    try {
+      const response = await fetch(`/api/jira-service/projects/${projectId}/import-from-jira`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const result = await response.json();
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to import from Jira');
+      }
+
+      toast({
+        title: 'Import Successful',
+        description: `Imported ${result.data.imported} tasks from Jira`
+      });
+
+      fetchBacklogItems(); // Refresh the list
+    } catch (error: any) {
+      toast({
+        title: 'Import Failed',
+        description: error.message,
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const openExportDialog = () => {
+    if (selectedItems.size === 0) {
+      toast({
+        title: 'No items selected',
+        description: 'Please select at least one backlog item to export to Jira.',
+        variant: 'destructive'
+      });
+      return;
+    }
+    setShowExportDialog(true);
+  };
+
+  const handleExportToJira = async () => {
+    if (selectedItems.size === 0) return;
+
+    setIsExporting(true);
+    setExportProgress([]);
+
+    try {
+      const selectedItemsArray = Array.from(selectedItems);
+      
+      const response = await fetch(`/api/jira-service/projects/${projectId}/bulk-export-to-jira`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          taskIds: selectedItemsArray
+        })
+      });
+
+      const result = await response.json();
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to export to Jira');
+      }
+
+      setExportProgress(result.data.results || []);
+      
+      toast({
+        title: 'Export Complete',
+        description: `${result.data.succeeded} items exported successfully, ${result.data.failed} failed`
+      });
+
+      // Refresh backlog items and clear selection
+      fetchBacklogItems();
+      setSelectedItems(new Set());
+      
+      // Close dialog after a delay
+      setTimeout(() => {
+        setShowExportDialog(false);
+        setExportProgress([]);
+      }, 3000);
+
+    } catch (error: any) {
+      toast({
+        title: 'Export Failed',
+        description: error.message,
+        variant: 'destructive'
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const getSelectedItemsForExport = () => {
+    return backlogItems.filter(item => selectedItems.has(item.id));
+  };
+
   const filteredBacklogItems = backlogItems.filter(item =>
     item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
     item.description?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -292,8 +417,33 @@ export function TaskBacklog({ projectId }: TaskBacklogProps) {
           <h2 className="text-2xl font-bold">Task Backlog</h2>
           <p className="text-muted-foreground">Manage your project backlog and move items to milestones</p>
         </div>
-        <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-          <DialogTrigger asChild>
+        <div className="flex items-center gap-2">
+          {/* Sync Operations */}
+          <div className="flex items-center gap-1 mr-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleImportFromJira}
+              title="Import tasks from Jira project"
+              data-testid="button-import-from-jira"
+            >
+              <Download className="h-4 w-4 mr-1" />
+              Import from Jira
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={openExportDialog}
+              disabled={selectedItems.size === 0}
+              title="Export selected tasks to Jira"
+              data-testid="button-export-to-jira"
+            >
+              <Upload className="h-4 w-4 mr-1" />
+              Export to Jira ({selectedItems.size})
+            </Button>
+          </div>
+          <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+            <DialogTrigger asChild>
             <Button onClick={() => setShowAddDialog(true)}>
               <Plus className="h-4 w-4 mr-2" />
               Add Backlog Item
@@ -373,6 +523,7 @@ export function TaskBacklog({ projectId }: TaskBacklogProps) {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {/* Search */}
