@@ -581,7 +581,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           { module: "tasks_milestones", access_level: "write" },
           { module: "risk_register", access_level: "write" },
           { module: "budget", access_level: "write" },
-          { module: "access_control", access_level: "write" }
+          { module: "access_control", access_level: "write" },
+          { module: "jira_sync", access_level: "write" }
         ]
       });
     } catch (error) {

@@ -74,6 +74,7 @@ export function useModulePermissions(projectId: string) {
           retrospectives: 'write',
           budget: 'write',
           access_control: 'write',
+          jira_sync: 'write',
         };
         setPermissions(fullPermissions);
         setLoading(false);

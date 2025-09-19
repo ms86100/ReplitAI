@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -56,6 +57,9 @@ export function JiraTaskSync({ projectId }: JiraTaskSyncProps) {
   const [isConfigOpen, setIsConfigOpen] = useState(false);
   const [isTestingConnection, setIsTestingConnection] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'success' | 'error' | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [isUnsyncDialogOpen, setIsUnsyncDialogOpen] = useState(false);
+  const [taskToUnsync, setTaskToUnsync] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     jira_base_url: '',
     jira_email: '',
