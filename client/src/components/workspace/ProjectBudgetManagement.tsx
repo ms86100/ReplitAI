@@ -314,7 +314,8 @@ export function ProjectBudgetManagement({ projectId }: ProjectBudgetManagementPr
 
       
 
-      await budgetApi.createSpendingEntry(selectedCategory, {
+      await budgetApi.createSpendingEntry(projectId, {
+        budget_category_id: selectedCategory,
         date: spendingForm.date,
         vendor: spendingForm.vendor,
         description: spendingForm.description,
