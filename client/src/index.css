@@ -24,10 +24,12 @@ All colors MUST be HSL.
     --popover: 0 0% 100%;
     --popover-foreground: 221 39% 11%;
 
-    /* Airbus Brand Colors - High Contrast */
-    --brand-primary: 221 100% 25%;
+    /* Airbus Brand Colors - Premium Modern Palette */
+    --brand-primary: 221 83% 20%; /* Deep Navy - Airbus signature color */
     --brand-on-primary: 0 0% 100%;
-    --brand-accent: 199 89% 45%;
+    --brand-accent: 200 85% 42%; /* Professional Blue */
+    --brand-secondary: 221 25% 35%; /* Charcoal Gray */
+    --brand-light: 200 85% 97%; /* Light Blue Tint */
 
     /* Primary System */
     --primary: var(--brand-primary);
@@ -169,8 +171,11 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground font-sans antialiased;
-    font-feature-settings: "rlig" 1, "calt" 1;
-    font-family: 'Inter', 'Source Sans Pro', system-ui, sans-serif;
+    font-feature-settings: "rlig" 1, "calt" 1, "cv01" 1, "cv02" 1;
+    font-family: 'Inter', 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
   
   /* Compact Layout */
@@ -211,10 +216,75 @@ All colors MUST be HSL.
     background-color: hsl(var(--brand-primary) / 0.50);
   }
   
-  /* Typography Enhancement */
+  /* Airbus Typography System - Premium Headlines */
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Source Sans Pro', 'Inter', system-ui, sans-serif;
-    font-weight: 600;
+    font-family: 'Inter', 'Segoe UI', 'Roboto', sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+    color: hsl(var(--brand-primary));
+  }
+
+  h1 {
+    font-size: 2.5rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+  }
+
+  h2 {
+    font-size: 2rem;
+    font-weight: 700;
     letter-spacing: -0.025em;
+  }
+
+  h3 {
+    font-size: 1.5rem;
+    font-weight: 600;
+  }
+
+  /* Professional Body Text */
+  p {
+    color: hsl(var(--text-primary));
+    line-height: 1.7;
+    font-weight: 400;
+  }
+
+  /* Premium Card Effects */
+  .airbus-card {
+    background: linear-gradient(135deg, hsl(var(--card)) 0%, hsl(var(--surface-alt)) 100%);
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-airbus);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .airbus-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 40px hsl(var(--brand-primary) / 0.15);
+    border-color: hsl(var(--brand-accent) / 0.3);
+  }
+
+  /* Premium Button Styles */
+  .airbus-btn-primary {
+    background: linear-gradient(135deg, hsl(var(--brand-primary)), hsl(var(--brand-accent)));
+    color: hsl(var(--brand-on-primary));
+    font-weight: 600;
+    letter-spacing: 0.025em;
+    box-shadow: var(--shadow-md);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .airbus-btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-lg);
+    filter: brightness(1.05);
+  }
+
+  /* Professional Navigation */
+  .airbus-nav {
+    background: hsl(var(--background) / 0.95);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid hsl(var(--border));
   }
 }

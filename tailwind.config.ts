@@ -61,13 +61,17 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
-        // Airbus Brand Colors
+        // Airbus Brand Colors - Enhanced Premium Palette
         'brand-primary': 'hsl(var(--brand-primary))',
         'brand-on-primary': 'hsl(var(--brand-on-primary))',
         'brand-accent': 'hsl(var(--brand-accent))',
+        'brand-secondary': 'hsl(var(--brand-secondary))',
+        'brand-light': 'hsl(var(--brand-light))',
         'airbus-primary': 'hsl(var(--brand-primary))',
+        'airbus-accent': 'hsl(var(--brand-accent))',
         'airbus-secondary': 'hsl(var(--secondary))',
         'airbus-secondary-dark': 'hsl(var(--secondary-hover))',
+        'airbus-light': 'hsl(var(--brand-light))',
       },
       fontFamily: {
         sans: ["var(--font-sans)"],
