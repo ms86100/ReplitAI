@@ -15,6 +15,20 @@ import {
   Clock
 } from 'lucide-react';
 
+// Helper to get auth token from localStorage
+const getAuthToken = (): string | null => {
+  try {
+    const storedAuth = localStorage.getItem('auth_session') || localStorage.getItem('app_session');
+    if (storedAuth) {
+      const session = JSON.parse(storedAuth);
+      return session?.access_token || session?.token || session?.accessToken || null;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+};
+
 interface Task {
   id: string;
   title: string;
@@ -53,9 +67,15 @@ export function JiraSyncToggle({ task, projectId, onSyncStatusChange, mode = 'vi
 
   const fetchIntegration = async () => {
     try {
+      const token = getAuthToken();
+      if (!token) {
+        setIsLoading(false);
+        return;
+      }
+      
       const response = await fetch(`/api/jira-service/projects/${projectId}/integration`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${token}`
         }
       });
       const result = await response.json();
@@ -83,10 +103,20 @@ export function JiraSyncToggle({ task, projectId, onSyncStatusChange, mode = 'vi
     setIsSyncing(true);
 
     try {
+      const token = getAuthToken();
+      if (!token) {
+        toast({
+          title: "Authentication Required",
+          description: "Please log in to sync tasks",
+          variant: "destructive"
+        });
+        return;
+      }
+      
       const response = await fetch(`/api/jira-service/projects/${projectId}/tasks/${task.id}/sync`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${token}`
         }
       });
       const result = await response.json();
@@ -121,10 +151,20 @@ export function JiraSyncToggle({ task, projectId, onSyncStatusChange, mode = 'vi
     setIsSyncing(true);
 
     try {
+      const token = getAuthToken();
+      if (!token) {
+        toast({
+          title: "Authentication Required",
+          description: "Please log in to unsync tasks",
+          variant: "destructive"
+        });
+        return;
+      }
+      
       const response = await fetch(`/api/jira-service/projects/${projectId}/tasks/${task.id}/sync`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${token}`
         }
       });
       const result = await response.json();
@@ -156,12 +196,22 @@ export function JiraSyncToggle({ task, projectId, onSyncStatusChange, mode = 'vi
   const toggleSyncStatus = async (enabled: boolean) => {
     if (!task.id) return;
 
+    const token = getAuthToken();
+    if (!token) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to update sync status",
+        variant: "destructive"
+      });
+      return;
+    }
+
     try {
       const response = await fetch(`/api/jira-service/projects/${projectId}/tasks/${task.id}/sync-status`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({ jira_sync_enabled: enabled })
       });

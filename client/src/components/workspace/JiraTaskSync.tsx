@@ -50,6 +50,20 @@ interface JiraTaskSyncProps {
   projectId: string;
 }
 
+// Helper to get auth token from localStorage
+const getAuthToken = (): string | null => {
+  try {
+    const storedAuth = localStorage.getItem('auth_session') || localStorage.getItem('app_session');
+    if (storedAuth) {
+      const session = JSON.parse(storedAuth);
+      return session?.access_token || session?.token || session?.accessToken || null;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+};
+
 export function JiraTaskSync({ projectId }: JiraTaskSyncProps) {
   const [integration, setIntegration] = useState<JiraIntegration | null>(null);
   const [syncHistory, setSyncHistory] = useState<JiraSyncHistory[]>([]);
@@ -75,9 +89,15 @@ export function JiraTaskSync({ projectId }: JiraTaskSyncProps) {
 
   const fetchIntegration = async () => {
     try {
+      const token = getAuthToken();
+      if (!token) {
+        setIsLoading(false);
+        return;
+      }
+      
       const response = await fetch(`/api/jira-service/projects/${projectId}/integration`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${token}`
         }
       });
       const result = await response.json();
@@ -102,9 +122,12 @@ export function JiraTaskSync({ projectId }: JiraTaskSyncProps) {
 
   const fetchSyncHistory = async () => {
     try {
+      const token = getAuthToken();
+      if (!token) return;
+      
       const response = await fetch(`/api/jira-service/projects/${projectId}/sync-history`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${token}`
         }
       });
       const result = await response.json();
@@ -131,10 +154,20 @@ export function JiraTaskSync({ projectId }: JiraTaskSyncProps) {
     setConnectionStatus(null);
 
     try {
+      const token = getAuthToken();
+      if (!token) {
+        toast({
+          title: "Authentication Required",
+          description: "Please log in to test the connection",
+          variant: "destructive"
+        });
+        return;
+      }
+      
       const response = await fetch(`/api/jira-service/projects/${projectId}/test-connection`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${token}`
         }
       });
       const result = await response.json();
@@ -176,11 +209,21 @@ export function JiraTaskSync({ projectId }: JiraTaskSyncProps) {
     }
 
     try {
+      const token = getAuthToken();
+      if (!token) {
+        toast({
+          title: "Authentication Required",
+          description: "Please log in to save configuration",
+          variant: "destructive"
+        });
+        return;
+      }
+      
       const response = await fetch(`/api/jira-service/projects/${projectId}/integration`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify(formData)
       });
