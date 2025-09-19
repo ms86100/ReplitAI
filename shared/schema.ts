@@ -173,17 +173,22 @@ export const budgetReceipts = pgTable("budget_receipts", {
   updated_at: timestamp("updated_at", { withTimezone: true }).notNull().default(sql`now()`)
 });
 
-// Insert schemas
+// Insert schemas with proper numeric handling
 export const insertBudgetCategorySchema = createInsertSchema(budgetCategories).omit({
   id: true,
   created_at: true,
   updated_at: true,
+}).extend({
+  budget_allocated: z.union([z.string(), z.number()]).transform(val => String(val)),
+  budget_received: z.union([z.string(), z.number()]).transform(val => String(val)),
 });
 
 export const insertBudgetSpendingSchema = createInsertSchema(budgetSpending).omit({
   id: true,
   created_at: true,
   updated_at: true,
+}).extend({
+  amount: z.union([z.string(), z.number()]).transform(val => String(val)),
 });
 
 // Types
