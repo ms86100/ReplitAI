@@ -3414,6 +3414,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             description: issue.fields.description || '',
             status: localStatus,
             priority: issue.fields.priority?.name.toLowerCase() || 'medium',
+            milestone_id: null, // Ensure imported tasks go to backlog
             jira_synced: true,
             jira_issue_key: issue.key,
             jira_issue_id: issue.id,
