@@ -3330,23 +3330,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Import all tasks from Jira project to local project
   app.post("/api/jira-service/projects/:projectId/import-from-jira", verifyToken, async (req, res) => {
     console.log("=== IMPORT FROM JIRA START ===");
+    console.log("Project ID:", req.params.projectId);
+    console.log("User ID:", req.user?.id);
     try {
       const { projectId } = req.params;
       const userId = req.user?.id;
 
       if (!userId) {
+        console.log("ERROR: User not authenticated");
         return res.status(401).json({
           success: false,
           error: "User not authenticated"
         });
       }
 
+      console.log("Looking for Jira integration for project:", projectId);
       // Get integration settings
       const integration = await db.select().from(jiraIntegrations)
         .where(eq(jiraIntegrations.project_id, projectId))
         .limit(1);
 
+      console.log("Integration query result:", integration.length > 0 ? "FOUND" : "NOT FOUND");
+
       if (integration.length === 0) {
+        console.log("ERROR: No Jira integration found for project");
         return res.status(404).json({
           success: false,
           error: "Jira integration not configured for this project"

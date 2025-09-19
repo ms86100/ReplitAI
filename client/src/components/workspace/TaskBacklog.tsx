@@ -305,6 +305,10 @@ export function TaskBacklog({ projectId }: TaskBacklogProps) {
 
   // Import from Jira
   const handleImportFromJira = async () => {
+    console.log("=== FRONTEND IMPORT START ===");
+    console.log("Project ID:", projectId);
+    console.log("Token exists:", !!localStorage.getItem('token'));
+    
     try {
       const response = await fetch(`/api/jira-service/projects/${projectId}/import-from-jira`, {
         method: 'POST',
@@ -314,9 +318,13 @@ export function TaskBacklog({ projectId }: TaskBacklogProps) {
         }
       });
 
+      console.log("Response status:", response.status, response.statusText);
+      
       const result = await response.json();
+      console.log("Response data:", result);
       
       if (!result.success) {
+        console.error("Import failed with error:", result.error);
         throw new Error(result.error || 'Failed to import from Jira');
       }
 
@@ -327,6 +335,12 @@ export function TaskBacklog({ projectId }: TaskBacklogProps) {
 
       fetchBacklogItems(); // Refresh the list
     } catch (error: any) {
+      console.error('Import error:', error);
+      console.error('Error details:', {
+        message: error.message,
+        type: typeof error
+      });
+      
       toast({
         title: 'Import Failed',
         description: error.message,
