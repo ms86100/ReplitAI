@@ -198,7 +198,7 @@ export function ProjectBudgetManagement({ projectId }: ProjectBudgetManagementPr
       }
       
       
-      if (result.data.budget) {
+      if (result.data?.budget) {
         setBudgetForm({
           currency: result.data.budget.currency || 'INR',
           total_budget_allocated: result.data.budget.total_budget_allocated?.toString() || '',
