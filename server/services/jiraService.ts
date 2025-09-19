@@ -93,17 +93,24 @@ export class JiraService {
 
   private async makeRequest(endpoint: string, options: RequestInit = {}): Promise<any> {
     const url = `${this.baseUrl}/rest/api/2${endpoint}`;
+    const headers = this.getAuthHeaders();
+    
+    console.log('Making Jira request to:', url);
+    console.log('Request headers:', { ...headers, Authorization: '[REDACTED]' });
     
     const response = await fetch(url, {
       ...options,
       headers: {
-        ...this.getAuthHeaders(),
+        ...headers,
         ...options.headers
       }
     });
 
+    console.log('Jira response status:', response.status, response.statusText);
+
     if (!response.ok) {
       const errorText = await response.text();
+      console.error('Jira API error response:', errorText);
       throw new Error(`Jira API error: ${response.status} ${response.statusText} - ${errorText}`);
     }
 
@@ -113,9 +120,16 @@ export class JiraService {
   // Test connection to Jira
   async testConnection(): Promise<{ success: boolean; error?: string }> {
     try {
-      await this.makeRequest('/myself');
+      console.log('Testing Jira connection...');
+      console.log('Base URL:', this.baseUrl);
+      console.log('Email:', this.email);
+      console.log('API Token length:', this.apiToken.length);
+      
+      const result = await this.makeRequest('/myself');
+      console.log('Jira connection test successful:', result);
       return { success: true };
     } catch (error) {
+      console.error('Jira connection test failed:', error);
       return { 
         success: false, 
         error: error instanceof Error ? error.message : 'Unknown error'
