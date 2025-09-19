@@ -294,37 +294,150 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { email, password } = req.body;
       
-      // Simple auth check
-      if (email === "ms861000@gmail.com" && password) {
-        const userId = "6dc39f1e-2af3-4b78-8488-317d90f4f538";
-        res.json({
-          success: true,
-          data: {
-            user: {
-              id: userId,
-              email: email,
-              full_name: "Project Manager",
-              department_id: "dept-1"
-            },
-            session: {
-              access_token: "token_" + userId,
-              user: {
-                id: userId,
-                email: email
-              }
-            }
-          }
+      if (!email || !password) {
+        return res.status(400).json({
+          success: false,
+          error: "Email and password are required"
         });
-      } else {
-        res.status(401).json({
+      }
+
+      // Find user in database
+      const userResult = await db.select().from(users).where(eq(users.email, email.toLowerCase())).limit(1);
+      
+      if (userResult.length === 0) {
+        return res.status(401).json({
           success: false,
           error: "Invalid credentials"
         });
       }
+
+      const user = userResult[0];
+      
+      // Verify password using bcrypt
+      const bcrypt = require('bcryptjs');
+      const isValidPassword = await bcrypt.compare(password, user.password_hash);
+      
+      if (!isValidPassword) {
+        return res.status(401).json({
+          success: false,
+          error: "Invalid credentials"
+        });
+      }
+
+      // Generate JWT token
+      const jwt = require('jsonwebtoken');
+      const token = jwt.sign(
+        { 
+          userId: user.id, 
+          email: user.email,
+          role: user.role
+        },
+        process.env.JWT_SECRET || 'dev_jwt_secret',
+        { expiresIn: '7d' }
+      );
+
+      res.json({
+        success: true,
+        data: {
+          user: {
+            id: user.id,
+            email: user.email,
+            full_name: "Project Manager", // TODO: Add full_name to users table
+            role: user.role,
+            department_id: "dept-1" // TODO: Add department relationship
+          },
+          session: {
+            access_token: token,
+            user: {
+              id: user.id,
+              email: user.email
+            }
+          }
+        }
+      });
     } catch (error) {
+      console.error('Login error:', error);
       res.status(500).json({ 
         success: false,
         error: error instanceof Error ? error.message : "Login failed" 
+      });
+    }
+  });
+
+  // Auth service - Register/Signup
+  app.post("/api/auth-service/register", async (req, res) => {
+    try {
+      const { email, password, fullName } = req.body;
+      
+      if (!email || !password) {
+        return res.status(400).json({
+          success: false,
+          error: "Email and password are required"
+        });
+      }
+
+      // Check if user already exists
+      const existingUser = await db.select().from(users).where(eq(users.email, email.toLowerCase())).limit(1);
+      
+      if (existingUser.length > 0) {
+        return res.status(409).json({
+          success: false,
+          error: "User already exists"
+        });
+      }
+
+      // Hash password
+      const bcrypt = require('bcryptjs');
+      const saltRounds = 10;
+      const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+      // Create new user
+      const newUser = await db.insert(users).values({
+        email: email.toLowerCase(),
+        password_hash: hashedPassword,
+        role: 'user',
+        created_at: new Date(),
+        updated_at: new Date()
+      }).returning();
+
+      const createdUser = newUser[0];
+
+      // Generate JWT token
+      const jwt = require('jsonwebtoken');
+      const token = jwt.sign(
+        { 
+          userId: createdUser.id, 
+          email: createdUser.email,
+          role: createdUser.role
+        },
+        process.env.JWT_SECRET || 'dev_jwt_secret',
+        { expiresIn: '7d' }
+      );
+
+      res.status(201).json({
+        success: true,
+        data: {
+          user: {
+            id: createdUser.id,
+            email: createdUser.email,
+            full_name: fullName || createdUser.email,
+            role: createdUser.role,
+            department_id: null
+          },
+          session: {
+            access_token: token,
+            user: {
+              id: createdUser.id,
+              email: createdUser.email
+            }
+          }
+        }
+      });
+    } catch (error) {
+      console.error('Register error:', error);
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Registration failed" 
       });
     }
   });
