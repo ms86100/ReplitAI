@@ -800,6 +800,9 @@ export function TaskBacklog({ projectId }: TaskBacklogProps) {
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle>Export to Jira</DialogTitle>
+            <DialogDescription>
+              Export selected backlog items to your connected Jira project
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
@@ -850,6 +853,7 @@ export function TaskBacklog({ projectId }: TaskBacklogProps) {
                 variant="outline" 
                 onClick={() => setShowExportDialog(false)}
                 disabled={isExporting}
+                data-testid="button-cancel-export"
               >
                 Cancel
               </Button>
