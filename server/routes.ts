@@ -8,7 +8,7 @@ import { storage } from "./storage";
 import { BackupAnalyzer } from "./services/backup-analyzer";
 import { DatabaseRestorer } from "./services/database-restorer";
 import { DatabaseVerifier } from "./services/verification";
-import { insertMigrationJobSchema, projects, insertProjectSchema, budgetTypeConfig, projectBudgets, budgetCategories, budgetSpending, budgetReceipts, insertBudgetCategorySchema, insertBudgetSpendingSchema, tasks, milestones, stakeholders, riskRegister, projectDiscussions, discussionActionItems, discussionChangeLog, projectMembers, taskBacklog, teams, teamMembers, teamCapacityIterations, teamCapacityMembers, iterationWeeks, weeklyAvailability, insertTaskSchema, insertMilestoneSchema, insertStakeholderSchema, insertRiskSchema, insertProjectDiscussionSchema, insertDiscussionActionItemSchema, insertProjectMemberSchema, insertTaskBacklogSchema, insertTeamSchema, insertTeamMemberSchema, insertTeamCapacityIterationSchema, insertTeamCapacityMemberSchema, insertIterationWeekSchema, insertWeeklyAvailabilitySchema, users } from "@shared/schema";
+import { insertMigrationJobSchema, projects, insertProjectSchema, budgetTypeConfig, projectBudgets, budgetCategories, budgetSpending, budgetReceipts, insertBudgetCategorySchema, insertBudgetSpendingSchema, tasks, milestones, stakeholders, riskRegister, projectDiscussions, discussionActionItems, discussionChangeLog, projectMembers, taskBacklog, teams, teamMembers, teamCapacityIterations, teamCapacityMembers, iterationWeeks, weeklyAvailability, insertTaskSchema, insertMilestoneSchema, insertStakeholderSchema, insertRiskSchema, insertProjectDiscussionSchema, insertDiscussionActionItemSchema, insertProjectMemberSchema, insertTaskBacklogSchema, insertTeamSchema, insertTeamMemberSchema, insertTeamCapacityIterationSchema, insertTeamCapacityMemberSchema, insertIterationWeekSchema, insertWeeklyAvailabilitySchema, users, retrospectives, retrospectiveColumns, retrospectiveCards, retrospectiveActionItems, retrospectiveCardVotes, insertRetrospectiveSchema, insertRetrospectiveColumnSchema, insertRetrospectiveCardSchema, insertRetrospectiveActionItemSchema } from "@shared/schema";
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { eq, and } from 'drizzle-orm';
@@ -1915,16 +1915,560 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Retrospective service
-  app.get("/api/retrospective-service/projects/:projectId/retrospectives", async (req, res) => {
+  // ==================== RETROSPECTIVE SERVICE ENDPOINTS ====================
+  
+  // GET /api/retro-service/projects/:projectId/retrospectives - Get all retrospectives for a project
+  app.get("/api/retro-service/projects/:projectId/retrospectives", async (req, res) => {
     try {
+      const { projectId } = req.params;
+      
+      const retrospectiveList = await db
+        .select({
+          id: retrospectives.id,
+          project_id: retrospectives.project_id,
+          iteration_id: retrospectives.iteration_id,
+          framework: retrospectives.framework,
+          status: retrospectives.status,
+          created_by: retrospectives.created_by,
+          created_at: retrospectives.created_at,
+          updated_at: retrospectives.updated_at,
+        })
+        .from(retrospectives)
+        .where(eq(retrospectives.project_id, projectId))
+        .orderBy(retrospectives.created_at);
+
+      // Get columns and cards for each retrospective
+      const retroData = await Promise.all(
+        retrospectiveList.map(async (retro) => {
+          const columns = await db
+            .select()
+            .from(retrospectiveColumns)
+            .where(eq(retrospectiveColumns.retrospective_id, retro.id))
+            .orderBy(retrospectiveColumns.column_order);
+
+          const columnsWithCards = await Promise.all(
+            columns.map(async (column) => {
+              const cards = await db
+                .select()
+                .from(retrospectiveCards)
+                .where(eq(retrospectiveCards.column_id, column.id))
+                .orderBy(retrospectiveCards.card_order);
+
+              return {
+                ...column,
+                cards
+              };
+            })
+          );
+
+          return {
+            ...retro,
+            columns: columnsWithCards
+          };
+        })
+      );
+      
       res.json({
         success: true,
-        data: []
+        data: retroData
       });
     } catch (error) {
+      console.error('Error fetching retrospectives:', error);
       res.status(500).json({ 
         success: false,
         error: error instanceof Error ? error.message : "Failed to get retrospectives" 
+      });
+    }
+  });
+
+  // POST /api/retro-service/projects/:projectId/retrospectives - Create a new retrospective
+  app.post("/api/retro-service/projects/:projectId/retrospectives", async (req, res) => {
+    try {
+      const { projectId } = req.params;
+      const { framework = 'classic', iterationName } = req.body;
+      
+      // Create retrospective
+      const [newRetrospective] = await db
+        .insert(retrospectives)
+        .values({
+          project_id: projectId,
+          iteration_id: iterationName,
+          framework,
+          status: 'active',
+          created_by: req.body.userId || '00000000-0000-0000-0000-000000000000' // Default user ID
+        })
+        .returning();
+
+      // Framework column templates
+      const frameworkColumns = {
+        classic: [
+          { title: 'Start', subtitle: 'What should we start doing?' },
+          { title: 'Stop', subtitle: 'What should we stop doing?' },
+          { title: 'Continue', subtitle: 'What should we continue doing?' }
+        ],
+        '4ls': [
+          { title: 'Liked', subtitle: 'What did we like?' },
+          { title: 'Learned', subtitle: 'What did we learn?' },
+          { title: 'Lacked', subtitle: 'What was missing or lacking?' },
+          { title: 'Longed For', subtitle: 'What did we long for?' }
+        ],
+        kiss: [
+          { title: 'Keep', subtitle: 'What should we continue doing?' },
+          { title: 'Improve', subtitle: 'What could be improved?' },
+          { title: 'Start', subtitle: 'What should we try next?' },
+          { title: 'Stop', subtitle: 'What should we avoid?' }
+        ],
+        sailboat: [
+          { title: 'Wind', subtitle: 'Things pushing the team forward' },
+          { title: 'Anchor', subtitle: 'Things holding the team back' },
+          { title: 'Rocks', subtitle: 'Risks or obstacles ahead' },
+          { title: 'Island', subtitle: 'Goals or desired state' }
+        ],
+        mad_sad_glad: [
+          { title: 'Mad', subtitle: 'What frustrated us?' },
+          { title: 'Sad', subtitle: 'What disappointed us?' },
+          { title: 'Glad', subtitle: 'What made us happy?' }
+        ]
+      };
+
+      const columns = frameworkColumns[framework] || frameworkColumns.classic;
+      
+      // Create columns
+      const columnInserts = columns.map((col, index) => ({
+        retrospective_id: newRetrospective.id,
+        title: col.title,
+        subtitle: col.subtitle,
+        column_order: index
+      }));
+
+      await db.insert(retrospectiveColumns).values(columnInserts);
+
+      res.json({
+        success: true,
+        data: {
+          message: 'Retrospective created successfully',
+          retrospective: newRetrospective
+        }
+      });
+    } catch (error) {
+      console.error('Error creating retrospective:', error);
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to create retrospective"
+      });
+    }
+  });
+
+  // GET /api/retro-service/retrospectives/:retrospectiveId/columns - Get columns for a retrospective
+  app.get("/api/retro-service/retrospectives/:retrospectiveId/columns", async (req, res) => {
+    try {
+      const { retrospectiveId } = req.params;
+      
+      const columns = await db
+        .select()
+        .from(retrospectiveColumns)
+        .where(eq(retrospectiveColumns.retrospective_id, retrospectiveId))
+        .orderBy(retrospectiveColumns.column_order);
+
+      res.json({
+        success: true,
+        data: columns
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to get columns"
+      });
+    }
+  });
+
+  // GET /api/retro-service/retrospectives/:retrospectiveId/cards - Get cards for a retrospective
+  app.get("/api/retro-service/retrospectives/:retrospectiveId/cards", async (req, res) => {
+    try {
+      const { retrospectiveId } = req.params;
+      
+      const cards = await db
+        .select()
+        .from(retrospectiveCards)
+        .leftJoin(retrospectiveColumns, eq(retrospectiveCards.column_id, retrospectiveColumns.id))
+        .where(eq(retrospectiveColumns.retrospective_id, retrospectiveId))
+        .orderBy(retrospectiveCards.card_order);
+
+      res.json({
+        success: true,
+        data: cards
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to get cards"
+      });
+    }
+  });
+
+  // POST /api/retro-service/columns/:columnId/cards - Create a card in a column
+  app.post("/api/retro-service/columns/:columnId/cards", async (req, res) => {
+    try {
+      const { columnId } = req.params;
+      const { text, card_order = 0 } = req.body;
+      
+      const [newCard] = await db
+        .insert(retrospectiveCards)
+        .values({
+          column_id: columnId,
+          text,
+          card_order,
+          votes: 0,
+          created_by: req.body.userId || '00000000-0000-0000-0000-000000000000'
+        })
+        .returning();
+
+      res.json({
+        success: true,
+        data: {
+          message: 'Card created successfully',
+          card: newCard
+        }
+      });
+    } catch (error) {
+      console.error('Error creating card:', error);
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to create card"
+      });
+    }
+  });
+
+  // PUT /api/retro-service/cards/:cardId - Update a card
+  app.put("/api/retro-service/cards/:cardId", async (req, res) => {
+    try {
+      const { cardId } = req.params;
+      const { text } = req.body;
+      
+      const [updatedCard] = await db
+        .update(retrospectiveCards)
+        .set({ text, updated_at: new Date() })
+        .where(eq(retrospectiveCards.id, cardId))
+        .returning();
+
+      res.json({
+        success: true,
+        data: {
+          message: 'Card updated successfully',
+          card: updatedCard
+        }
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to update card"
+      });
+    }
+  });
+
+  // DELETE /api/retro-service/cards/:cardId - Delete a card
+  app.delete("/api/retro-service/cards/:cardId", async (req, res) => {
+    try {
+      const { cardId } = req.params;
+      
+      // First delete any votes for this card
+      await db.delete(retrospectiveCardVotes).where(eq(retrospectiveCardVotes.card_id, cardId));
+      
+      // Then delete the card
+      await db.delete(retrospectiveCards).where(eq(retrospectiveCards.id, cardId));
+
+      res.json({
+        success: true,
+        data: {
+          message: 'Card deleted successfully'
+        }
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to delete card"
+      });
+    }
+  });
+
+  // POST /api/retro-service/cards/:cardId/vote - Vote on a card
+  app.post("/api/retro-service/cards/:cardId/vote", async (req, res) => {
+    try {
+      const { cardId } = req.params;
+      const userId = req.body.userId || '00000000-0000-0000-0000-000000000000';
+      
+      // Check if user already voted
+      const existingVote = await db
+        .select()
+        .from(retrospectiveCardVotes)
+        .where(and(
+          eq(retrospectiveCardVotes.card_id, cardId),
+          eq(retrospectiveCardVotes.user_id, userId)
+        ))
+        .limit(1);
+
+      if (existingVote.length > 0) {
+        // Remove vote
+        await db
+          .delete(retrospectiveCardVotes)
+          .where(and(
+            eq(retrospectiveCardVotes.card_id, cardId),
+            eq(retrospectiveCardVotes.user_id, userId)
+          ));
+        
+        // Decrease vote count
+        const [card] = await db
+          .select({ votes: retrospectiveCards.votes })
+          .from(retrospectiveCards)
+          .where(eq(retrospectiveCards.id, cardId));
+        
+        await db
+          .update(retrospectiveCards)
+          .set({ votes: Math.max(0, card.votes - 1) })
+          .where(eq(retrospectiveCards.id, cardId));
+
+        res.json({
+          success: true,
+          data: { message: 'Vote removed' }
+        });
+      } else {
+        // Add vote
+        await db
+          .insert(retrospectiveCardVotes)
+          .values({
+            card_id: cardId,
+            user_id: userId
+          });
+        
+        // Increase vote count
+        const [card] = await db
+          .select({ votes: retrospectiveCards.votes })
+          .from(retrospectiveCards)
+          .where(eq(retrospectiveCards.id, cardId));
+        
+        await db
+          .update(retrospectiveCards)
+          .set({ votes: card.votes + 1 })
+          .where(eq(retrospectiveCards.id, cardId));
+
+        res.json({
+          success: true,
+          data: { message: 'Vote added' }
+        });
+      }
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to vote on card"
+      });
+    }
+  });
+
+  // DELETE /api/retro-service/cards/:cardId/unvote - Remove vote from a card
+  app.delete("/api/retro-service/cards/:cardId/unvote", async (req, res) => {
+    try {
+      const { cardId } = req.params;
+      const userId = req.body.userId || '00000000-0000-0000-0000-000000000000';
+      
+      // Remove vote
+      await db
+        .delete(retrospectiveCardVotes)
+        .where(and(
+          eq(retrospectiveCardVotes.card_id, cardId),
+          eq(retrospectiveCardVotes.user_id, userId)
+        ));
+      
+      // Decrease vote count
+      const [card] = await db
+        .select({ votes: retrospectiveCards.votes })
+        .from(retrospectiveCards)
+        .where(eq(retrospectiveCards.id, cardId));
+      
+      await db
+        .update(retrospectiveCards)
+        .set({ votes: Math.max(0, card.votes - 1) })
+        .where(eq(retrospectiveCards.id, cardId));
+
+      res.json({
+        success: true,
+        data: { message: 'Vote removed' }
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to remove vote"
+      });
+    }
+  });
+
+  // PUT /api/retro-service/cards/:cardId/move - Move a card to a different column
+  app.put("/api/retro-service/cards/:cardId/move", async (req, res) => {
+    try {
+      const { cardId } = req.params;
+      const { column_id } = req.body;
+      
+      await db
+        .update(retrospectiveCards)
+        .set({ column_id })
+        .where(eq(retrospectiveCards.id, cardId));
+
+      res.json({
+        success: true,
+        data: { message: 'Card moved successfully' }
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to move card"
+      });
+    }
+  });
+
+  // GET /api/retro-service/retrospectives/:retrospectiveId/action-items - Get action items for a retrospective
+  app.get("/api/retro-service/retrospectives/:retrospectiveId/action-items", async (req, res) => {
+    try {
+      const { retrospectiveId } = req.params;
+      
+      const actionItems = await db
+        .select()
+        .from(retrospectiveActionItems)
+        .where(eq(retrospectiveActionItems.retrospective_id, retrospectiveId));
+
+      res.json({
+        success: true,
+        data: actionItems
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to get action items"
+      });
+    }
+  });
+
+  // POST /api/retro-service/retrospectives/:retrospectiveId/action-items - Create an action item
+  app.post("/api/retro-service/retrospectives/:retrospectiveId/action-items", async (req, res) => {
+    try {
+      const { retrospectiveId } = req.params;
+      const { what_task, when_sprint, who_responsible, how_approach, from_card_id, backlog_ref_id } = req.body;
+      
+      const [newActionItem] = await db
+        .insert(retrospectiveActionItems)
+        .values({
+          retrospective_id: retrospectiveId,
+          what_task,
+          when_sprint,
+          who_responsible,
+          how_approach,
+          from_card_id,
+          backlog_ref_id,
+          created_by: req.body.userId || '00000000-0000-0000-0000-000000000000'
+        })
+        .returning();
+
+      res.json({
+        success: true,
+        data: {
+          message: 'Action item created successfully',
+          actionItem: newActionItem
+        }
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to create action item"
+      });
+    }
+  });
+
+  // DELETE /api/retro-service/:retrospectiveId - Delete a retrospective
+  app.delete("/api/retro-service/:retrospectiveId", async (req, res) => {
+    try {
+      const { retrospectiveId } = req.params;
+      
+      // Delete action items first
+      await db.delete(retrospectiveActionItems).where(eq(retrospectiveActionItems.retrospective_id, retrospectiveId));
+      
+      // Get all columns for this retrospective
+      const columns = await db
+        .select({ id: retrospectiveColumns.id })
+        .from(retrospectiveColumns)
+        .where(eq(retrospectiveColumns.retrospective_id, retrospectiveId));
+      
+      // Delete votes and cards for each column
+      for (const column of columns) {
+        const cards = await db
+          .select({ id: retrospectiveCards.id })
+          .from(retrospectiveCards)
+          .where(eq(retrospectiveCards.column_id, column.id));
+        
+        for (const card of cards) {
+          await db.delete(retrospectiveCardVotes).where(eq(retrospectiveCardVotes.card_id, card.id));
+        }
+        
+        await db.delete(retrospectiveCards).where(eq(retrospectiveCards.column_id, column.id));
+      }
+      
+      // Delete columns
+      await db.delete(retrospectiveColumns).where(eq(retrospectiveColumns.retrospective_id, retrospectiveId));
+      
+      // Finally delete the retrospective
+      await db.delete(retrospectives).where(eq(retrospectives.id, retrospectiveId));
+
+      res.json({
+        success: true,
+        data: { message: 'Retrospective deleted successfully' }
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to delete retrospective"
+      });
+    }
+  });
+
+  // PUT /api/retro-service/action-items/:actionItemId - Update an action item
+  app.put("/api/retro-service/action-items/:actionItemId", async (req, res) => {
+    try {
+      const { actionItemId } = req.params;
+      const updateData = req.body;
+      
+      const [updatedActionItem] = await db
+        .update(retrospectiveActionItems)
+        .set({ ...updateData, updated_at: new Date() })
+        .where(eq(retrospectiveActionItems.id, actionItemId))
+        .returning();
+
+      res.json({
+        success: true,
+        data: {
+          message: 'Action item updated successfully',
+          actionItem: updatedActionItem
+        }
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to update action item"
+      });
+    }
+  });
+
+  // DELETE /api/retro-service/action-items/:actionItemId - Delete an action item
+  app.delete("/api/retro-service/action-items/:actionItemId", async (req, res) => {
+    try {
+      const { actionItemId } = req.params;
+      
+      await db.delete(retrospectiveActionItems).where(eq(retrospectiveActionItems.id, actionItemId));
+
+      res.json({
+        success: true,
+        data: { message: 'Action item deleted successfully' }
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to delete action item"
       });
     }
   });
