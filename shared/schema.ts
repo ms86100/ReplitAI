@@ -538,3 +538,102 @@ export type SelectIterationWeek = typeof iterationWeeks.$inferSelect;
 export type InsertWeeklyAvailability = z.infer<typeof insertWeeklyAvailabilitySchema>;
 export type SelectWeeklyAvailability = typeof weeklyAvailability.$inferSelect;
 export type InsertTeamCapacityMember = z.infer<typeof insertTeamCapacityMemberSchema>;
+
+// Retrospective tables
+export const retrospectives = pgTable("retrospectives", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  project_id: uuid("project_id").notNull(),
+  iteration_id: uuid("iteration_id"),
+  framework: text("framework").notNull().default("classic"),
+  status: text("status").notNull().default("active"),
+  created_by: uuid("created_by").notNull(),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().default(sql`now()`),
+  updated_at: timestamp("updated_at", { withTimezone: true }).notNull().default(sql`now()`)
+});
+
+export const retrospectiveColumns = pgTable("retrospective_columns", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  retrospective_id: uuid("retrospective_id").notNull(),
+  title: text("title").notNull(),
+  subtitle: text("subtitle"),
+  column_order: integer("column_order").notNull().default(0),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().default(sql`now()`),
+  updated_at: timestamp("updated_at", { withTimezone: true }).notNull().default(sql`now()`)
+});
+
+export const retrospectiveCards = pgTable("retrospective_cards", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  column_id: uuid("column_id").notNull(),
+  text: text("text").notNull(),
+  votes: integer("votes").notNull().default(0),
+  card_order: integer("card_order").notNull().default(0),
+  created_by: uuid("created_by").notNull(),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().default(sql`now()`),
+  updated_at: timestamp("updated_at", { withTimezone: true }).notNull().default(sql`now()`)
+});
+
+export const retrospectiveActionItems = pgTable("retrospective_action_items", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  retrospective_id: uuid("retrospective_id").notNull(),
+  what_task: text("what_task").notNull(),
+  when_sprint: text("when_sprint"),
+  who_responsible: text("who_responsible"),
+  how_approach: text("how_approach"),
+  from_card_id: uuid("from_card_id"),
+  backlog_ref_id: uuid("backlog_ref_id"),
+  converted_to_task: boolean("converted_to_task").default(false),
+  created_by: uuid("created_by").notNull(),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().default(sql`now()`),
+  updated_at: timestamp("updated_at", { withTimezone: true }).notNull().default(sql`now()`)
+});
+
+export const retrospectiveCardVotes = pgTable("retrospective_card_votes", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  card_id: uuid("card_id").notNull(),
+  user_id: uuid("user_id").notNull(),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().default(sql`now()`)
+}, (table) => ({
+  uniqueVote: unique().on(table.card_id, table.user_id)
+}));
+
+// Insert schemas for retrospective tables
+export const insertRetrospectiveSchema = createInsertSchema(retrospectives).omit({
+  id: true,
+  created_at: true,
+  updated_at: true,
+});
+
+export const insertRetrospectiveColumnSchema = createInsertSchema(retrospectiveColumns).omit({
+  id: true,
+  created_at: true,
+  updated_at: true,
+});
+
+export const insertRetrospectiveCardSchema = createInsertSchema(retrospectiveCards).omit({
+  id: true,
+  created_at: true,
+  updated_at: true,
+});
+
+export const insertRetrospectiveActionItemSchema = createInsertSchema(retrospectiveActionItems).omit({
+  id: true,
+  created_at: true,
+  updated_at: true,
+});
+
+export const insertRetrospectiveCardVoteSchema = createInsertSchema(retrospectiveCardVotes).omit({
+  id: true,
+  created_at: true,
+});
+
+// Types for retrospective tables
+export type Retrospective = typeof retrospectives.$inferSelect;
+export type RetrospectiveColumn = typeof retrospectiveColumns.$inferSelect;
+export type RetrospectiveCard = typeof retrospectiveCards.$inferSelect;
+export type RetrospectiveActionItem = typeof retrospectiveActionItems.$inferSelect;
+export type RetrospectiveCardVote = typeof retrospectiveCardVotes.$inferSelect;
+export type InsertRetrospective = z.infer<typeof insertRetrospectiveSchema>;
+export type InsertRetrospectiveColumn = z.infer<typeof insertRetrospectiveColumnSchema>;
+export type InsertRetrospectiveCard = z.infer<typeof insertRetrospectiveCardSchema>;
+export type InsertRetrospectiveActionItem = z.infer<typeof insertRetrospectiveActionItemSchema>;
+export type InsertRetrospectiveCardVote = z.infer<typeof insertRetrospectiveCardVoteSchema>;
