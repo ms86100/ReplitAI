@@ -8,7 +8,7 @@ import { storage } from "./storage";
 import { BackupAnalyzer } from "./services/backup-analyzer";
 import { DatabaseRestorer } from "./services/database-restorer";
 import { DatabaseVerifier } from "./services/verification";
-import { insertMigrationJobSchema, projects, insertProjectSchema, budgetTypeConfig, projectBudgets, budgetCategories, budgetSpending, budgetReceipts, insertBudgetCategorySchema, insertBudgetSpendingSchema, tasks, milestones, stakeholders, riskRegister, projectDiscussions, discussionActionItems, discussionChangeLog, projectMembers, taskBacklog, teams, teamMembers, teamCapacityIterations, teamCapacityMembers, iterationWeeks, weeklyAvailability, insertTaskSchema, insertMilestoneSchema, insertStakeholderSchema, insertRiskSchema, insertProjectDiscussionSchema, insertDiscussionActionItemSchema, insertProjectMemberSchema, insertTaskBacklogSchema, insertTeamSchema, insertTeamMemberSchema, insertTeamCapacityIterationSchema, insertTeamCapacityMemberSchema, insertIterationWeekSchema, insertWeeklyAvailabilitySchema, users, retrospectives, retrospectiveColumns, retrospectiveCards, retrospectiveActionItems, retrospectiveCardVotes, insertRetrospectiveSchema, insertRetrospectiveColumnSchema, insertRetrospectiveCardSchema, insertRetrospectiveActionItemSchema } from "@shared/schema";
+import { insertMigrationJobSchema, projects, insertProjectSchema, budgetTypeConfig, projectBudgets, budgetCategories, budgetSpending, budgetReceipts, insertBudgetCategorySchema, insertBudgetSpendingSchema, tasks, milestones, stakeholders, riskRegister, projectDiscussions, discussionActionItems, discussionChangeLog, projectMembers, taskBacklog, teams, teamMembers, teamCapacityIterations, teamCapacityMembers, iterationWeeks, weeklyAvailability, insertTaskSchema, insertMilestoneSchema, insertStakeholderSchema, insertRiskSchema, insertProjectDiscussionSchema, insertDiscussionActionItemSchema, insertProjectMemberSchema, insertTaskBacklogSchema, insertTeamSchema, insertTeamMemberSchema, insertTeamCapacityIterationSchema, insertTeamCapacityMemberSchema, insertIterationWeekSchema, insertWeeklyAvailabilitySchema, users, retrospectives, retrospectiveColumns, retrospectiveCards, retrospectiveActionItems, retrospectiveCardVotes, insertRetrospectiveSchema, insertRetrospectiveColumnSchema, insertRetrospectiveCardSchema, insertRetrospectiveActionItemSchema, userRoles, modulePermissions, moduleAccessAudit, insertUserRoleSchema, insertModulePermissionSchema, insertModuleAccessAuditSchema } from "@shared/schema";
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { eq, and } from 'drizzle-orm';
@@ -486,24 +486,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Access service - Get project permissions
   app.get("/api/access-service/projects/:projectId/access", async (req, res) => {
     try {
+      const projectId = req.params.projectId;
+      const authHeader = req.headers.authorization;
+      
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ success: false, error: "Authentication required" });
+      }
+      
+      const token = authHeader.substring(7);
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'dev_jwt_secret') as any;
+      const userId = decoded.userId;
+      
+      // Check if user has access to this project
+      const project = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
+      if (project.length === 0) {
+        return res.status(404).json({ success: false, error: "Project not found" });
+      }
+      
+      // Check if user is project owner or admin
+      const isOwner = project[0].created_by === userId;
+      const userRole = await db.select().from(userRoles).where(and(eq(userRoles.user_id, userId), eq(userRoles.role, "admin"))).limit(1);
+      const isAdmin = userRole.length > 0;
+      
+      if (!isOwner && !isAdmin) {
+        // Check if user has any module permissions for this project
+        const hasPermissions = await db.select().from(modulePermissions).where(and(eq(modulePermissions.project_id, projectId), eq(modulePermissions.user_id, userId))).limit(1);
+        if (hasPermissions.length === 0) {
+          return res.status(403).json({ success: false, error: "Access denied" });
+        }
+      }
+      
+      // Get all module permissions for this project
+      const permissions = await db.select({
+        id: modulePermissions.id,
+        user_id: modulePermissions.user_id,
+        module: modulePermissions.module,
+        access_level: modulePermissions.access_level,
+        granted_by: modulePermissions.granted_by,
+        created_at: modulePermissions.created_at,
+        user_email: users.email
+      })
+      .from(modulePermissions)
+      .leftJoin(users, eq(modulePermissions.user_id, users.id))
+      .where(eq(modulePermissions.project_id, projectId));
+      
       res.json({
         success: true,
-        data: [
-          { module: "overview", access_level: "write" },
-          { module: "kanban", access_level: "write" },
-          { module: "roadmap", access_level: "write" },
-          { module: "stakeholders", access_level: "write" },
-          { module: "risks", access_level: "write" },
-          { module: "status", access_level: "write" },
-          { module: "discussions", access_level: "write" },
-          { module: "task_backlog", access_level: "write" },
-          { module: "team_capacity", access_level: "write" },
-          { module: "retrospectives", access_level: "write" },
-          { module: "tasks_milestones", access_level: "write" },
-          { module: "risk_register", access_level: "write" },
-          { module: "budget", access_level: "write" },
-          { module: "access_control", access_level: "write" }
-        ]
+        data: permissions
       });
     } catch (error) {
       res.status(500).json({ 
@@ -513,9 +542,191 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Access service - Grant module permission
+  app.post("/api/access-service/permissions/grant", async (req, res) => {
+    try {
+      const { projectId, userEmail, module, accessLevel } = req.body;
+      const authHeader = req.headers.authorization;
+      
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ success: false, error: "Authentication required" });
+      }
+      
+      const token = authHeader.substring(7);
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'dev_jwt_secret') as any;
+      const grantedBy = decoded.userId;
+      
+      if (!projectId || !userEmail || !module || !accessLevel) {
+        return res.status(400).json({ success: false, error: "Missing required fields" });
+      }
+      
+      // Check if granting user has access to this project
+      const project = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
+      if (project.length === 0) {
+        return res.status(404).json({ success: false, error: "Project not found" });
+      }
+      
+      const isOwner = project[0].created_by === grantedBy;
+      const userRole = await db.select().from(userRoles).where(and(eq(userRoles.user_id, grantedBy), eq(userRoles.role, "admin"))).limit(1);
+      const isAdmin = userRole.length > 0;
+      
+      if (!isOwner && !isAdmin) {
+        return res.status(403).json({ success: false, error: "Only project owners and admins can grant permissions" });
+      }
+      
+      // Find target user by email
+      const targetUser = await db.select().from(users).where(eq(users.email, userEmail.toLowerCase())).limit(1);
+      if (targetUser.length === 0) {
+        return res.status(404).json({ success: false, error: "User not found" });
+      }
+      
+      const targetUserId = targetUser[0].id;
+      
+      // Check if permission already exists
+      const existingPermission = await db.select().from(modulePermissions)
+        .where(and(
+          eq(modulePermissions.project_id, projectId),
+          eq(modulePermissions.user_id, targetUserId),
+          eq(modulePermissions.module, module)
+        )).limit(1);
+      
+      let permission;
+      if (existingPermission.length > 0) {
+        // Update existing permission
+        const updated = await db.update(modulePermissions)
+          .set({ 
+            access_level: accessLevel, 
+            granted_by: grantedBy,
+            updated_at: new Date()
+          })
+          .where(and(
+            eq(modulePermissions.project_id, projectId),
+            eq(modulePermissions.user_id, targetUserId),
+            eq(modulePermissions.module, module)
+          ))
+          .returning();
+        permission = updated[0];
+      } else {
+        // Create new permission
+        const permissionData = insertModulePermissionSchema.parse({
+          project_id: projectId,
+          user_id: targetUserId,
+          module: module,
+          access_level: accessLevel,
+          granted_by: grantedBy
+        });
+        
+        const newPermission = await db.insert(modulePermissions).values(permissionData).returning();
+        permission = newPermission[0];
+      }
+      
+      res.json({
+        success: true,
+        data: {
+          message: existingPermission.length > 0 ? "Permission updated successfully" : "Permission granted successfully",
+          permission: permission
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to grant permission" 
+      });
+    }
+  });
+  
+  // Access service - Revoke module permission
+  app.delete("/api/access-service/permissions/:permissionId/revoke", async (req, res) => {
+    try {
+      const permissionId = req.params.permissionId;
+      const authHeader = req.headers.authorization;
+      
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ success: false, error: "Authentication required" });
+      }
+      
+      const token = authHeader.substring(7);
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'dev_jwt_secret') as any;
+      const userId = decoded.userId;
+      
+      // Get the permission to check access
+      const permission = await db.select({
+        id: modulePermissions.id,
+        project_id: modulePermissions.project_id
+      })
+      .from(modulePermissions)
+      .where(eq(modulePermissions.id, permissionId))
+      .limit(1);
+      
+      if (permission.length === 0) {
+        return res.status(404).json({ success: false, error: "Permission not found" });
+      }
+      
+      // Check if user has access to revoke this permission
+      const project = await db.select().from(projects).where(eq(projects.id, permission[0].project_id)).limit(1);
+      if (project.length === 0) {
+        return res.status(404).json({ success: false, error: "Project not found" });
+      }
+      
+      const isOwner = project[0].created_by === userId;
+      const userRole = await db.select().from(userRoles).where(and(eq(userRoles.user_id, userId), eq(userRoles.role, "admin"))).limit(1);
+      const isAdmin = userRole.length > 0;
+      
+      if (!isOwner && !isAdmin) {
+        return res.status(403).json({ success: false, error: "Only project owners and admins can revoke permissions" });
+      }
+      
+      // Delete the permission
+      await db.delete(modulePermissions).where(eq(modulePermissions.id, permissionId));
+      
+      res.json({
+        success: true,
+        data: { message: "Permission revoked successfully" }
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to revoke permission" 
+      });
+    }
+  });
+
   // Access service - Log access
   app.post("/api/access-service/log-access", async (req, res) => {
     try {
+      const { projectId, module, accessType, accessLevel } = req.body;
+      const authHeader = req.headers.authorization;
+      
+      // Get user_id from token, not from request body for security
+      let userId = null;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        try {
+          const token = authHeader.substring(7);
+          const decoded = jwt.verify(token, process.env.JWT_SECRET || 'dev_jwt_secret') as any;
+          userId = decoded.userId;
+        } catch (error) {
+          // Ignore invalid tokens for logging - continue with null user_id
+        }
+      }
+      
+      if (!userId) {
+        // Log access attempt without authentication
+        return res.json({
+          success: true,
+          data: { message: "Access logged (unauthenticated)" }
+        });
+      }
+      
+      const auditData = insertModuleAccessAuditSchema.parse({
+        user_id: userId,
+        project_id: projectId,
+        module: module,
+        access_type: accessType,
+        access_level: accessLevel
+      });
+      
+      await db.insert(moduleAccessAudit).values(auditData);
+      
       res.json({
         success: true,
         data: { message: "Access logged" }

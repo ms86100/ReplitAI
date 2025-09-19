@@ -637,3 +637,63 @@ export type InsertRetrospectiveColumn = z.infer<typeof insertRetrospectiveColumn
 export type InsertRetrospectiveCard = z.infer<typeof insertRetrospectiveCardSchema>;
 export type InsertRetrospectiveActionItem = z.infer<typeof insertRetrospectiveActionItemSchema>;
 export type InsertRetrospectiveCardVote = z.infer<typeof insertRetrospectiveCardVoteSchema>;
+
+// Access Control Tables
+export const userRoles = pgTable("user_roles", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  user_id: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  role: text("role").notNull(), // admin, project_coordinator, user
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().default(sql`now()`),
+  updated_at: timestamp("updated_at", { withTimezone: true }).notNull().default(sql`now()`)
+}, (table) => ({
+  uniqueUserRole: unique().on(table.user_id, table.role)
+}));
+
+export const modulePermissions = pgTable("module_permissions", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  project_id: uuid("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  user_id: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  module: text("module").notNull(), // overview, tasks_milestones, roadmap, kanban, etc.
+  access_level: text("access_level").notNull(), // read, write
+  granted_by: uuid("granted_by").notNull().references(() => users.id),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().default(sql`now()`),
+  updated_at: timestamp("updated_at", { withTimezone: true }).notNull().default(sql`now()`)
+}, (table) => ({
+  uniqueUserProjectModule: unique().on(table.project_id, table.user_id, table.module)
+}));
+
+export const moduleAccessAudit = pgTable("module_access_audit", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  user_id: uuid("user_id").notNull().references(() => users.id),
+  project_id: uuid("project_id").notNull().references(() => projects.id),
+  module: text("module").notNull(),
+  access_type: text("access_type").notNull(), // accessed, denied
+  access_level: text("access_level").notNull(), // read, write
+  timestamp: timestamp("timestamp", { withTimezone: true }).notNull().default(sql`now()`)
+});
+
+// Insert schemas for access control tables
+export const insertUserRoleSchema = createInsertSchema(userRoles).omit({
+  id: true,
+  created_at: true,
+  updated_at: true,
+});
+
+export const insertModulePermissionSchema = createInsertSchema(modulePermissions).omit({
+  id: true,
+  created_at: true,
+  updated_at: true,
+});
+
+export const insertModuleAccessAuditSchema = createInsertSchema(moduleAccessAudit).omit({
+  id: true,
+  timestamp: true,
+});
+
+// Types for access control tables
+export type UserRole = typeof userRoles.$inferSelect;
+export type ModulePermission = typeof modulePermissions.$inferSelect;
+export type ModuleAccessAudit = typeof moduleAccessAudit.$inferSelect;
+export type InsertUserRole = z.infer<typeof insertUserRoleSchema>;
+export type InsertModulePermission = z.infer<typeof insertModulePermissionSchema>;
+export type InsertModuleAccessAudit = z.infer<typeof insertModuleAccessAuditSchema>;
