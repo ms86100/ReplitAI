@@ -12,7 +12,7 @@ import { JiraService, defaultJiraFieldMapping } from "./services/jiraService";
 import { insertMigrationJobSchema, projects, insertProjectSchema, budgetTypeConfig, projectBudgets, budgetCategories, budgetSpending, budgetReceipts, insertBudgetCategorySchema, insertBudgetSpendingSchema, tasks, milestones, stakeholders, riskRegister, projectDiscussions, discussionActionItems, discussionChangeLog, projectMembers, taskBacklog, teams, teamMembers, teamCapacityIterations, teamCapacityMembers, iterationWeeks, weeklyAvailability, insertTaskSchema, insertMilestoneSchema, insertStakeholderSchema, insertRiskSchema, insertProjectDiscussionSchema, insertDiscussionActionItemSchema, insertProjectMemberSchema, insertTaskBacklogSchema, insertTeamSchema, insertTeamMemberSchema, insertTeamCapacityIterationSchema, insertTeamCapacityMemberSchema, insertIterationWeekSchema, insertWeeklyAvailabilitySchema, users, retrospectives, retrospectiveColumns, retrospectiveCards, retrospectiveActionItems, retrospectiveCardVotes, insertRetrospectiveSchema, insertRetrospectiveColumnSchema, insertRetrospectiveCardSchema, insertRetrospectiveActionItemSchema, jiraIntegrations, jiraSyncHistory, insertJiraIntegrationSchema, insertJiraSyncHistorySchema } from "@shared/schema";
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { eq, and, exists } from 'drizzle-orm';
+import { eq, and, exists, or, isNull, desc, gte, lte, sum, count, isNotNull, inArray, like } from 'drizzle-orm';
 import { db } from './db';
 
 const upload = multer({ 
@@ -3321,6 +3321,419 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : "Failed to update sync status"
+      });
+    }
+  });
+
+  // BULK SYNC OPERATIONS
+  
+  // Import all tasks from Jira project to local project
+  app.post("/api/jira-service/projects/:projectId/import-from-jira", verifyToken, async (req, res) => {
+    console.log("=== IMPORT FROM JIRA START ===");
+    try {
+      const { projectId } = req.params;
+      const userId = req.user?.id;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          error: "User not authenticated"
+        });
+      }
+
+      // Get integration settings
+      const integration = await db.select().from(jiraIntegrations)
+        .where(eq(jiraIntegrations.project_id, projectId))
+        .limit(1);
+
+      if (integration.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: "Jira integration not configured for this project"
+        });
+      }
+
+      const integrationData = integration[0];
+      
+      // Create Jira service
+      const jiraService = new JiraService(
+        integrationData.jira_base_url,
+        integrationData.jira_email,
+        integrationData.jira_api_token,
+        integrationData.jira_project_key
+      );
+
+      console.log("Searching for Jira issues in project:", integrationData.jira_project_key);
+      
+      // Search for all issues in the Jira project
+      const jql = `project = ${integrationData.jira_project_key} ORDER BY created DESC`;
+      const searchResult = await jiraService.searchIssues(jql, 100);
+      
+      console.log(`Found ${searchResult.issues.length} issues in Jira`);
+
+      let importedCount = 0;
+      let skippedCount = 0;
+      const importResults = [];
+
+      for (const issue of searchResult.issues) {
+        try {
+          // Check if task already exists with this Jira issue key
+          const existingTask = await db.select().from(tasks)
+            .where(and(
+              eq(tasks.project_id, projectId),
+              eq(tasks.jira_issue_key, issue.key)
+            ))
+            .limit(1);
+
+          if (existingTask.length > 0) {
+            console.log(`Task already exists for ${issue.key}, skipping`);
+            skippedCount++;
+            importResults.push({
+              jira_issue_key: issue.key,
+              status: 'skipped',
+              reason: 'Task already exists'
+            });
+            continue;
+          }
+
+          // Map Jira status to local status
+          let localStatus = 'todo';
+          const jiraStatus = issue.fields.status.name.toLowerCase();
+          if (jiraStatus.includes('progress') || jiraStatus.includes('doing')) {
+            localStatus = 'in_progress';
+          } else if (jiraStatus.includes('done') || jiraStatus.includes('complete')) {
+            localStatus = 'completed';
+          } else if (jiraStatus.includes('block') || jiraStatus.includes('stop')) {
+            localStatus = 'blocked';
+          }
+
+          // Create task from Jira issue
+          const taskData = insertTaskSchema.parse({
+            project_id: projectId,
+            title: issue.fields.summary,
+            description: issue.fields.description || '',
+            status: localStatus,
+            priority: issue.fields.priority?.name.toLowerCase() || 'medium',
+            jira_synced: true,
+            jira_issue_key: issue.key,
+            jira_issue_id: issue.id,
+            jira_sync_enabled: true,
+            jira_last_sync: new Date(),
+            created_by: userId
+          });
+
+          const [newTask] = await db.insert(tasks).values(taskData).returning();
+          
+          // Log sync history
+          const syncHistoryData = insertJiraSyncHistorySchema.parse({
+            project_id: projectId,
+            task_id: newTask.id,
+            jira_issue_key: issue.key,
+            sync_direction: 'from_jira',
+            operation: 'import',
+            status: 'success',
+            sync_data: JSON.stringify({
+              jira_issue_id: issue.id,
+              jira_summary: issue.fields.summary,
+              jira_status: issue.fields.status.name
+            }),
+            performed_by: userId
+          });
+
+          await db.insert(jiraSyncHistory).values(syncHistoryData);
+          
+          importedCount++;
+          importResults.push({
+            jira_issue_key: issue.key,
+            task_id: newTask.id,
+            status: 'imported'
+          });
+
+          console.log(`Imported ${issue.key} -> ${newTask.id}`);
+
+        } catch (error) {
+          console.error(`Failed to import ${issue.key}:`, error);
+          
+          // Log failed sync
+          const syncHistoryData = insertJiraSyncHistorySchema.parse({
+            project_id: projectId,
+            jira_issue_key: issue.key,
+            sync_direction: 'from_jira',
+            operation: 'import',
+            status: 'error',
+            error_message: error instanceof Error ? error.message : 'Unknown error',
+            performed_by: userId
+          });
+
+          await db.insert(jiraSyncHistory).values(syncHistoryData);
+
+          importResults.push({
+            jira_issue_key: issue.key,
+            status: 'error',
+            error: error instanceof Error ? error.message : 'Unknown error'
+          });
+        }
+      }
+
+      // Update integration last sync time
+      await db.update(jiraIntegrations)
+        .set({ last_sync: new Date(), updated_at: new Date() })
+        .where(eq(jiraIntegrations.project_id, projectId));
+
+      console.log(`Import complete: ${importedCount} imported, ${skippedCount} skipped`);
+
+      res.json({
+        success: true,
+        data: {
+          imported: importedCount,
+          skipped: skippedCount,
+          total: searchResult.issues.length,
+          results: importResults
+        }
+      });
+
+    } catch (error) {
+      console.error("Import from Jira failed:", error);
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to import from Jira"
+      });
+    }
+  });
+
+  // Export all project tasks to Jira
+  app.post("/api/jira-service/projects/:projectId/export-to-jira", verifyToken, async (req, res) => {
+    console.log("=== EXPORT TO JIRA START ===");
+    try {
+      const { projectId } = req.params;
+      const userId = req.user?.id;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          error: "User not authenticated"
+        });
+      }
+
+      // Get integration settings
+      const integration = await db.select().from(jiraIntegrations)
+        .where(eq(jiraIntegrations.project_id, projectId))
+        .limit(1);
+
+      if (integration.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: "Jira integration not configured for this project"
+        });
+      }
+
+      const integrationData = integration[0];
+      
+      // Create Jira service
+      const jiraService = new JiraService(
+        integrationData.jira_base_url,
+        integrationData.jira_email,
+        integrationData.jira_api_token,
+        integrationData.jira_project_key
+      );
+
+      // Get all tasks that are not yet synced to Jira
+      const tasksToExport = await db.select().from(tasks)
+        .where(and(
+          eq(tasks.project_id, projectId),
+          or(
+            eq(tasks.jira_synced, false),
+            isNull(tasks.jira_issue_key)
+          )
+        ));
+
+      console.log(`Found ${tasksToExport.length} tasks to export to Jira`);
+
+      let exportedCount = 0;
+      const exportResults = [];
+      
+      // Get field mapping (use default for now)
+      const fieldMapping = {
+        statusMapping: {
+          'todo': 'To Do',
+          'in_progress': 'In Progress', 
+          'completed': 'Done',
+          'blocked': 'Blocked',
+          'on_hold': 'On Hold'
+        },
+        priorityMapping: {
+          'low': 'Low',
+          'medium': 'Medium',
+          'high': 'High',
+          'urgent': 'Highest'
+        },
+        issueType: 'Task'
+      };
+
+      for (const task of tasksToExport) {
+        try {
+          // Create Jira issue payload
+          const jiraPayload = {
+            fields: {
+              project: { key: integrationData.jira_project_key },
+              summary: task.title,
+              description: task.description || '',
+              issuetype: { name: fieldMapping.issueType },
+              priority: task.priority && fieldMapping.priorityMapping[task.priority as keyof typeof fieldMapping.priorityMapping]
+                ? { name: fieldMapping.priorityMapping[task.priority as keyof typeof fieldMapping.priorityMapping] }
+                : { name: 'Medium' }
+            }
+          };
+
+          // Create issue in Jira
+          const createdIssue = await jiraService.createIssue(jiraPayload);
+          
+          // Update local task with Jira information
+          await db.update(tasks)
+            .set({
+              jira_synced: true,
+              jira_issue_key: createdIssue.key,
+              jira_issue_id: createdIssue.id,
+              jira_sync_enabled: true,
+              jira_last_sync: new Date(),
+              updated_at: new Date()
+            })
+            .where(eq(tasks.id, task.id));
+
+          // Log sync history
+          const syncHistoryData = insertJiraSyncHistorySchema.parse({
+            project_id: projectId,
+            task_id: task.id,
+            jira_issue_key: createdIssue.key,
+            sync_direction: 'to_jira',
+            operation: 'export',
+            status: 'success',
+            sync_data: JSON.stringify({
+              jira_issue_id: createdIssue.id,
+              local_title: task.title,
+              local_status: task.status
+            }),
+            performed_by: userId
+          });
+
+          await db.insert(jiraSyncHistory).values(syncHistoryData);
+          
+          exportedCount++;
+          exportResults.push({
+            task_id: task.id,
+            jira_issue_key: createdIssue.key,
+            status: 'exported'
+          });
+
+          console.log(`Exported task ${task.id} -> ${createdIssue.key}`);
+
+        } catch (error) {
+          console.error(`Failed to export task ${task.id}:`, error);
+          
+          // Log failed sync
+          const syncHistoryData = insertJiraSyncHistorySchema.parse({
+            project_id: projectId,
+            task_id: task.id,
+            sync_direction: 'to_jira',
+            operation: 'export',
+            status: 'error',
+            error_message: error instanceof Error ? error.message : 'Unknown error',
+            performed_by: userId
+          });
+
+          await db.insert(jiraSyncHistory).values(syncHistoryData);
+
+          exportResults.push({
+            task_id: task.id,
+            status: 'error',
+            error: error instanceof Error ? error.message : 'Unknown error'
+          });
+        }
+      }
+
+      // Update integration last sync time
+      await db.update(jiraIntegrations)
+        .set({ last_sync: new Date(), updated_at: new Date() })
+        .where(eq(jiraIntegrations.project_id, projectId));
+
+      console.log(`Export complete: ${exportedCount} exported`);
+
+      res.json({
+        success: true,
+        data: {
+          exported: exportedCount,
+          total: tasksToExport.length,
+          results: exportResults
+        }
+      });
+
+    } catch (error) {
+      console.error("Export to Jira failed:", error);
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to export to Jira"
+      });
+    }
+  });
+
+  // Full bidirectional sync
+  app.post("/api/jira-service/projects/:projectId/full-sync", verifyToken, async (req, res) => {
+    console.log("=== FULL SYNC START ===");
+    try {
+      const { projectId } = req.params;
+      const userId = req.user?.id;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          error: "User not authenticated"
+        });
+      }
+
+      // First import from Jira
+      const importResponse = await fetch(`${req.protocol}://${req.get('host')}/api/jira-service/projects/${projectId}/import-from-jira`, {
+        method: 'POST',
+        headers: {
+          'Authorization': req.headers.authorization || '',
+          'Content-Type': 'application/json'
+        }
+      });
+      const importResult = await importResponse.json();
+
+      if (!importResult.success) {
+        throw new Error(`Import failed: ${importResult.error}`);
+      }
+
+      // Then export to Jira
+      const exportResponse = await fetch(`${req.protocol}://${req.get('host')}/api/jira-service/projects/${projectId}/export-to-jira`, {
+        method: 'POST',
+        headers: {
+          'Authorization': req.headers.authorization || '',
+          'Content-Type': 'application/json'
+        }
+      });
+      const exportResult = await exportResponse.json();
+
+      if (!exportResult.success) {
+        throw new Error(`Export failed: ${exportResult.error}`);
+      }
+
+      console.log("Full sync complete");
+
+      res.json({
+        success: true,
+        data: {
+          import: importResult.data,
+          export: exportResult.data,
+          message: "Full bidirectional sync completed successfully"
+        }
+      });
+
+    } catch (error) {
+      console.error("Full sync failed:", error);
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to perform full sync"
       });
     }
   });
