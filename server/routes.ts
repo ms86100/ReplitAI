@@ -2920,6 +2920,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const userId = user[0].id;
       
+      // Map frontend access levels to database roles (using 'member' for both since it's the only valid role)
+      const roleMapping: { [key: string]: string } = {
+        'read': 'member',
+        'write': 'member',
+        'admin': 'member'
+      };
+      
+      const dbRole = roleMapping[accessLevel] || 'member';
+      
       // Check if permission already exists
       const existingPermission = await db.select()
         .from(projectMembers)
@@ -2932,7 +2941,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Update existing permission
         await db.update(projectMembers)
           .set({ 
-            role: accessLevel,
+            role: dbRole,
             updated_at: new Date().toISOString()
           })
           .where(and(
@@ -2944,7 +2953,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const memberData = insertProjectMemberSchema.parse({
           project_id: projectId,
           user_id: userId,
-          role: accessLevel,
+          role: dbRole,
           invited_by: "6dc39f1e-2af3-4b78-8488-317d90f4f538",
           status: "active"
         });
