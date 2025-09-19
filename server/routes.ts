@@ -1,5 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import cors from 'cors';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs/promises';
@@ -28,6 +29,36 @@ const sql = neon(process.env.DATABASE_URL!);
 const db = drizzle(sql, { schema });
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  
+  // CORS configuration for local development
+  const corsOptions = {
+    origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+      try {
+        const allowedEnv = process.env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()).filter(Boolean) || [];
+        const isLocalhost = !!origin && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+        const isAllowedEnv = !!origin && allowedEnv.includes(origin);
+        let isReplitEnv = false;
+        try {
+          if (origin) {
+            const hostname = new URL(origin).hostname;
+            isReplitEnv = /replit\.dev$/.test(hostname);
+          }
+        } catch {}
+
+        // Allow same-origin requests (no origin header), localhost, and configured origins
+        if (!origin || isLocalhost || isAllowedEnv || isReplitEnv) {
+          return callback(null, true);
+        }
+      } catch {}
+      callback(new Error('Not allowed by CORS'));
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-client-info', 'apikey'],
+    optionsSuccessStatus: 204,
+  };
+
+  app.use(cors(corsOptions));
   
   // Upload backup file
   app.post("/api/upload-backup", upload.single('backup'), async (req, res) => {

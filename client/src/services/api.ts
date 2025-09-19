@@ -11,18 +11,24 @@ class ApiClient {
   private baseUrl: string;
 
   constructor() {
-    // Always use Replit backend - no Supabase dependency
     const apiUrl = import.meta.env.VITE_API_URL as string | undefined;
     const onLocalhost = typeof window !== 'undefined' && window.location.hostname === 'localhost';
 
     if (apiUrl && apiUrl.trim() !== '') {
+      // Use explicitly configured API URL
       this.baseUrl = apiUrl;
       this.isLocalBackend = apiUrl.includes('localhost');
     } else if (onLocalhost) {
-      this.baseUrl = 'http://localhost:3001';
+      // For localhost, require explicit VITE_API_URL configuration
+      console.error('⚠️ Running on localhost but VITE_API_URL is not configured!');
+      console.error('💡 Please create a .env file with: VITE_API_URL=http://localhost:YOUR_BACKEND_PORT');
+      console.error('📝 Example: VITE_API_URL=http://localhost:5000 (for Replit unified server)');
+      console.error('📝 Example: VITE_API_URL=http://localhost:3001 (for separate backend)');
+      // Fallback to current origin + /api for unified server setups
+      this.baseUrl = `${window.location.origin}/api`;
       this.isLocalBackend = true;
     } else {
-      // Replit environment: use current origin + /api
+      // Production/Replit environment: use current origin + /api
       this.baseUrl = `${window.location.origin}/api`;
       this.isLocalBackend = true;
     }
