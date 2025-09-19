@@ -1,0 +1,56 @@
+PS C:\Users\thech\projects\RepAI-PM\ReplitAI> $env:NODE_ENV="development"; npx tsx server/index.ts
+node:events:496
+      throw er; // Unhandled 'error' event
+      ^
+
+Error: listen ENOTSUP: operation not supported on socket ::1:3001
+    at Server.setupListenHandle [as _listen2] (node:net:1915:21)
+    at listenInCluster (node:net:1994:12)
+    at GetAddrInfoReqWrap.callback (node:net:2203:7)
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:132:8)
+Emitted 'error' event on Server instance at:
+    at emitErrorNT (node:net:1973:8)
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'ENOTSUP',
+  errno: -4049,
+  syscall: 'listen',
+  address: '::1',
+  port: 3001
+}
+
+Node.js v22.14.0
+PS C:\Users\thech\projects\RepAI-PM\ReplitAI> git pull origin main
+remote: Enumerating objects: 7, done.
+remote: Counting objects: 100% (7/7), done.
+remote: Compressing objects: 100% (1/1), done.
+remote: Total 4 (delta 3), reused 4 (delta 3), pack-reused 0 (from 0)
+Unpacking objects: 100% (4/4), 658 bytes | 36.00 KiB/s, done.
+From https://github.com/ms86100/ReplitAI
+ * branch            main       -> FETCH_HEAD
+   6ecb887..4f13eed  main       -> origin/main
+Updating 6ecb887..4f13eed
+Fast-forward
+ server/index.ts | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+PS C:\Users\thech\projects\RepAI-PM\ReplitAI> $env:NODE_ENV="development"; npx tsx server/index.ts
+node:events:496
+      throw er; // Unhandled 'error' event
+      ^
+
+Error: listen ENOTSUP: operation not supported on socket 127.0.0.1:3001
+    at Server.setupListenHandle [as _listen2] (node:net:1915:21)
+    at listenInCluster (node:net:1994:12)
+    at node:net:2203:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)
+Emitted 'error' event on Server instance at:
+    at emitErrorNT (node:net:1973:8)
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'ENOTSUP',
+  errno: -4049,
+  syscall: 'listen',
+  address: '127.0.0.1',
+  port: 3001
+}
+
+Node.js v22.14.0
+PS C:\Users\thech\projects\RepAI-PM\ReplitAI> 
