@@ -140,14 +140,14 @@ export function ProjectSidebar({ projectId }: ProjectSidebarProps) {
       : "hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground";
 
   return (
-    <div className="w-64 bg-sidebar border-r border-border flex flex-col h-full">
-      {/* Header Section */}
-      <div className="p-6 border-b border-border">
+    <div className="w-64 bg-gradient-to-b from-brand-light to-background border-r border-border/50 flex flex-col h-full shadow-lg">
+      {/* Premium Header Section */}
+      <div className="p-6 border-b border-border/30 bg-gradient-to-r from-airbus-primary/5 to-transparent">
         <Button 
           variant="outline" 
           size="sm"
+          className="flex items-center gap-2 w-full justify-start mb-4 text-airbus-primary border-airbus-primary/20 hover:bg-airbus-primary hover:text-white transition-all font-medium"
           onClick={() => setLocation('/')}
-          className="flex items-center gap-2 w-full justify-start"
         >
           <ArrowLeft className="h-4 w-4" />
           Back to Projects
@@ -156,10 +156,11 @@ export function ProjectSidebar({ projectId }: ProjectSidebarProps) {
 
       <div className="flex-1 py-6">
         {/* Project Navigation Section */}
-        <div className="px-6 mb-4">
-          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+        <div className="px-6 mb-6">
+          <h3 className="text-xs font-bold text-airbus-primary uppercase tracking-wider mb-1">
             PROJECT NAVIGATION
           </h3>
+          <div className="h-0.5 w-8 bg-gradient-to-r from-airbus-primary to-airbus-accent rounded-full"></div>
         </div>
         
         <nav className="px-3 space-y-1">
@@ -181,10 +182,10 @@ export function ProjectSidebar({ projectId }: ProjectSidebarProps) {
                   key={item.id}
                   variant="ghost"
                   onClick={() => setLocation(`/project/${projectId}/${item.path}`)}
-                  className={`flex items-center gap-3 px-3 py-2.5 mx-3 rounded-lg text-sm font-medium transition-all duration-200 w-full justify-start ${
+                  className={`flex items-center gap-3 px-4 py-3 mx-3 rounded-xl text-sm font-medium transition-all duration-300 w-full justify-start group ${
                     itemIsActive
-                      ? "bg-primary text-primary-foreground shadow-sm"
-                      : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                      ? "bg-gradient-to-r from-airbus-primary to-airbus-accent text-white shadow-lg transform scale-[1.02]"
+                      : "text-sidebar-foreground hover:bg-gradient-to-r hover:from-airbus-light hover:to-airbus-primary/10 hover:text-airbus-primary hover:scale-[1.01] hover:shadow-md"
                   }`}
                   data-testid={`link-${item.id}`}
                 >
@@ -199,7 +200,7 @@ export function ProjectSidebar({ projectId }: ProjectSidebarProps) {
           <AccessControlDialog 
             projectId={projectId} 
             trigger={
-              <button className="flex items-center gap-3 px-3 py-2.5 mx-3 rounded-lg text-sm font-medium transition-all duration-200 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground w-full text-left">
+              <button className="flex items-center gap-3 px-4 py-3 mx-3 rounded-xl text-sm font-medium transition-all duration-300 text-sidebar-foreground hover:bg-gradient-to-r hover:from-airbus-light hover:to-airbus-primary/10 hover:text-airbus-primary hover:scale-[1.01] hover:shadow-md w-full text-left group">
                 <Shield className="h-4 w-4 flex-shrink-0" />
                 <span className="truncate">Access Control</span>
               </button>
@@ -209,17 +210,18 @@ export function ProjectSidebar({ projectId }: ProjectSidebarProps) {
       </div>
 
       {/* System Section */}
-      <div className="pb-6">
-        <div className="px-6 mb-4">
-          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+      <div className="pb-6 border-t border-border/30 pt-6">
+        <div className="px-6 mb-6">
+          <h3 className="text-xs font-bold text-airbus-primary uppercase tracking-wider mb-1">
             SYSTEM
           </h3>
+          <div className="h-0.5 w-6 bg-gradient-to-r from-airbus-primary to-airbus-accent rounded-full"></div>
         </div>
         
         <nav className="px-3 space-y-1">
           <button 
             onClick={() => setLocation(`/project/${projectId}`)}
-            className="flex items-center gap-3 px-3 py-2.5 mx-3 rounded-lg text-sm font-medium transition-all duration-200 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground w-full text-left"
+            className="flex items-center gap-3 px-4 py-3 mx-3 rounded-xl text-sm font-medium transition-all duration-300 text-sidebar-foreground hover:bg-gradient-to-r hover:from-airbus-light hover:to-airbus-primary/10 hover:text-airbus-primary hover:scale-[1.01] hover:shadow-md w-full text-left group"
           >
             <Settings className="h-4 w-4 flex-shrink-0" />
             <span className="truncate">Settings</span>
@@ -227,7 +229,7 @@ export function ProjectSidebar({ projectId }: ProjectSidebarProps) {
           
           <Dialog open={showAuditLog} onOpenChange={setShowAuditLog}>
             <DialogTrigger asChild>
-              <button className="flex items-center gap-3 px-3 py-2.5 mx-3 rounded-lg text-sm font-medium transition-all duration-200 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground w-full text-left">
+              <button className="flex items-center gap-3 px-4 py-3 mx-3 rounded-xl text-sm font-medium transition-all duration-300 text-sidebar-foreground hover:bg-gradient-to-r hover:from-airbus-light hover:to-airbus-primary/10 hover:text-airbus-primary hover:scale-[1.01] hover:shadow-md w-full text-left group">
                 <Activity className="h-4 w-4 flex-shrink-0" />
                 <span className="truncate">Activity Log</span>
               </button>
