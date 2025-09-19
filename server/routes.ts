@@ -320,7 +320,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Projects service - Delete project
-  app.delete("/api/projects-service/projects/:id", verifyToken, async (req, res) => {
+  app.delete("/api/projects-service/projects/:id", async (req, res) => {
     try {
       const projectId = req.params.id;
       
@@ -1251,7 +1251,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Workspace service - Delete action item
-  app.delete("/api/workspace-service/projects/:projectId/action-items/:actionItemId", verifyToken, async (req, res) => {
+  app.delete("/api/workspace-service/projects/:projectId/action-items/:actionItemId", async (req, res) => {
     try {
       const projectId = req.params.projectId;
       const actionItemId = req.params.actionItemId;
@@ -1336,7 +1336,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Workspace service - Delete discussion
-  app.delete("/api/workspace-service/projects/:projectId/discussions/:discussionId", verifyToken, async (req, res) => {
+  app.delete("/api/workspace-service/projects/:projectId/discussions/:discussionId", async (req, res) => {
     try {
       const projectId = req.params.projectId;
       const discussionId = req.params.discussionId;
@@ -1464,7 +1464,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Backlog service - Delete backlog item
-  app.delete("/api/backlog-service/projects/:projectId/backlog/:itemId", verifyToken, async (req, res) => {
+  app.delete("/api/backlog-service/projects/:projectId/backlog/:itemId", async (req, res) => {
     try {
       const projectId = req.params.projectId;
       const itemId = req.params.itemId;
@@ -1701,7 +1701,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Team service - Delete team (aligned with existing pattern)
-  app.delete("/api/projects/:projectId/teams/:teamId", verifyToken, async (req, res) => {
+  app.delete("/api/projects/:projectId/teams/:teamId", async (req, res) => {
     try {
       const projectId = req.params.projectId;
       const teamId = req.params.teamId;
@@ -1730,7 +1730,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Team service - Delete team (legacy alias for backward compatibility)
-  app.delete("/api/capacity-service/teams/:teamId", verifyToken, async (req, res) => {
+  app.delete("/api/capacity-service/teams/:teamId", async (req, res) => {
     try {
       const teamId = req.params.teamId;
       
