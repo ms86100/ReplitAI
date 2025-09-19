@@ -11,6 +11,7 @@ import { RetrospectiveView } from '@/components/workspace/RetrospectiveView';
 import { ProjectBudgetManagement } from '@/components/workspace/ProjectBudgetManagement';
 import { ProjectAccessControl } from '@/components/workspace/ProjectAccessControl';
 import { ProjectAnalyticsDashboard } from '@/components/analytics/ProjectAnalyticsDashboard';
+import { JiraTaskSync } from '@/components/workspace/JiraTaskSync';
 import { ModuleAccessWrapper } from '@/components/ModuleAccessWrapper';
 import { ModuleName } from '@/hooks/useModulePermissions';
 
@@ -115,6 +116,12 @@ export function ProjectWorkspaceContent({ projectId, currentModule = 'roadmap' }
           component: <ProjectAccessControl projectId={projectId} />, 
           moduleName: 'access_control' as ModuleName, 
           requiredAccess: 'write' 
+        };
+      case 'jira-sync':
+        return { 
+          component: <JiraTaskSync projectId={projectId} />, 
+          moduleName: 'jira_sync' as ModuleName, 
+          requiredAccess: 'read' 
         };
       default:
         return { 

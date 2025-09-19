@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { Home, FolderOpen, Users, Settings, Plane, BarChart3, Calendar, Bell, RotateCcw, Shield, Map, Kanban, MessageSquare, Archive, AlertTriangle, Activity, ArrowLeft } from "lucide-react"
+import { Home, FolderOpen, Users, Settings, Plane, BarChart3, Calendar, Bell, RotateCcw, Shield, Map, Kanban, MessageSquare, Archive, AlertTriangle, Activity, ArrowLeft, Link as LinkIcon } from "lucide-react"
 import { useLocation, Link } from "wouter"
 import { useProjectContext } from "@/hooks/useProjectContext"
 import { Button } from "@/components/ui/button"
@@ -32,6 +32,7 @@ const getProjectNavigation = (projectId: string) => [
   { title: "Tasks & Milestones", url: `/project/${projectId}/tasks`, icon: Calendar },
   { title: "Roadmap", url: `/project/${projectId}/roadmap`, icon: Map },
   { title: "Kanban", url: `/project/${projectId}/kanban`, icon: Kanban },
+  { title: "Jira Task Sync", url: `/project/${projectId}/jira-sync`, icon: LinkIcon },
   { title: "Stakeholders", url: `/project/${projectId}/stakeholders`, icon: Users },
   { title: "Risk Register", url: `/project/${projectId}/risks`, icon: AlertTriangle },
   { title: "Discussions", url: `/project/${projectId}/discussions`, icon: MessageSquare },

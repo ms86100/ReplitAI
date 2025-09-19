@@ -14,7 +14,8 @@ export type ModuleName =
   | 'team_capacity'
   | 'retrospectives'
   | 'budget'
-  | 'access_control';
+  | 'access_control'
+  | 'jira_sync';
 
 export type AccessLevel = 'read' | 'write';
 
