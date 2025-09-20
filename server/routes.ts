@@ -1085,15 +1085,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/stakeholder-service/projects/:projectId/stakeholders/:stakeholderId", async (req, res) => {
     try {
       const stakeholderId = req.params.stakeholderId;
-      const updateData = {
-        name: req.body.name,
-        email: req.body.email,
-        department: req.body.department,
-        raci: req.body.raci,
-        influence_level: req.body.influence_level,
-        notes: req.body.notes,
+      
+      // Filter out undefined values and only include fields that are provided
+      const updateData: any = {
         updated_at: new Date().toISOString()
       };
+      
+      if (req.body.name !== undefined) updateData.name = req.body.name;
+      if (req.body.email !== undefined) updateData.email = req.body.email;
+      if (req.body.department !== undefined) updateData.department = req.body.department;
+      if (req.body.raci !== undefined) updateData.raci = req.body.raci;
+      if (req.body.influence_level !== undefined) updateData.influence_level = req.body.influence_level;
+      if (req.body.notes !== undefined) updateData.notes = req.body.notes;
       
       const updatedStakeholder = await db.update(stakeholders)
         .set(updateData)
