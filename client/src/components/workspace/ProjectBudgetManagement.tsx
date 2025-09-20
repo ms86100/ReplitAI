@@ -353,12 +353,91 @@ export function ProjectBudgetManagement({ projectId }: ProjectBudgetManagementPr
     }
   };
 
+  const updateCategory = async () => {
+    try {
+      if (!editingCategory) return;
+
+      await budgetApi.updateBudgetCategory(projectId, editingCategory.id, {
+        budget_type_code: categoryForm.budget_type_code,
+        name: categoryForm.name,
+        budget_allocated: parseFloat(categoryForm.budget_allocated) || 0,
+        budget_received: parseFloat(categoryForm.budget_received) || 0,
+        comments: categoryForm.comments,
+      });
+
+      toast({
+        title: "Success",
+        description: "Budget category updated successfully",
+      });
+      setIsEditCategoryOpen(false);
+      setEditingCategory(null);
+      setCategoryForm({
+        budget_type_code: '',
+        name: '',
+        budget_allocated: '',
+        budget_received: '',
+        comments: '',
+      });
+      fetchBudgetData();
+    } catch (error: any) {
+      console.error('❌ Error updating category:', error);
+      toast({
+        title: "Error",
+        description: error?.message || "Failed to update category",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const updateSpending = async () => {
+    try {
+      if (!editingSpending || !selectedCategory) return;
+
+      await budgetApi.updateSpendingEntry(projectId, editingSpending.id, {
+        budget_category_id: selectedCategory,
+        date: spendingForm.date,
+        vendor: spendingForm.vendor,
+        description: spendingForm.description,
+        invoice_id: spendingForm.invoice_id,
+        amount: parseFloat(spendingForm.amount) || 0,
+        payment_method: spendingForm.payment_method,
+        status: spendingForm.status,
+      });
+
+      toast({
+        title: "Success",
+        description: "Spending entry updated successfully",
+      });
+      setIsEditSpendingOpen(false);
+      setEditingSpending(null);
+      setSpendingForm({
+        date: '',
+        vendor: '',
+        description: '',
+        invoice_id: '',
+        amount: '',
+        payment_method: '',
+        status: 'pending',
+      });
+      setSelectedCategory('');
+      setActiveTab('spending');
+      fetchBudgetData();
+    } catch (error: any) {
+      console.error('❌ Error updating spending:', error);
+      toast({
+        title: "Error",
+        description: error?.message || "Failed to update spending entry",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleEditCategory = (category: any) => {
     setEditingCategory(category);
     setCategoryForm({
       name: category.name,
-      budget_allocated: category.budget_allocated,
-      budget_received: category.budget_received,
+      budget_allocated: category.budget_allocated.toString(),
+      budget_received: category.budget_received.toString(),
       budget_type_code: category.budget_type_code,
       comments: category.comments || '',
     });
@@ -430,7 +509,7 @@ export function ProjectBudgetManagement({ projectId }: ProjectBudgetManagementPr
     setEditingSpending(spending);
     setSpendingForm({
       description: spending.description,
-      amount: spending.amount,
+      amount: spending.amount.toString(),
       vendor: spending.vendor || '',
       date: spending.date,
       payment_method: spending.payment_method || '',
@@ -1147,6 +1226,16 @@ export function ProjectBudgetManagement({ projectId }: ProjectBudgetManagementPr
                 />
               </div>
               <div>
+                <Label htmlFor="edit_budget_received">Budget Received</Label>
+                <Input
+                  id="edit_budget_received"
+                  type="number"
+                  value={categoryForm.budget_received}
+                  onChange={(e) => setCategoryForm(prev => ({ ...prev, budget_received: e.target.value }))}
+                  placeholder="0.00"
+                />
+              </div>
+              <div>
                 <Label htmlFor="edit_comments">Comments</Label>
                 <Textarea
                   id="edit_comments"
@@ -1155,15 +1244,7 @@ export function ProjectBudgetManagement({ projectId }: ProjectBudgetManagementPr
                   placeholder="Optional comments"
                 />
               </div>
-              <Button onClick={() => {
-                // Add update logic here
-                setIsEditCategoryOpen(false);
-                toast({
-                  title: "Success",
-                  description: "Budget category updated successfully",
-                });
-                fetchBudgetData();
-              }} className="w-full">
+              <Button onClick={updateCategory} className="w-full">
                 Update Category
               </Button>
             </div>
@@ -1211,15 +1292,7 @@ export function ProjectBudgetManagement({ projectId }: ProjectBudgetManagementPr
                   placeholder="0.00"
                 />
               </div>
-              <Button onClick={() => {
-                // Add update logic here
-                setIsEditSpendingOpen(false);
-                toast({
-                  title: "Success",
-                  description: "Spending entry updated successfully",
-                });
-                fetchBudgetData();
-              }} className="w-full">
+              <Button onClick={updateSpending} className="w-full">
                 Update Spending Entry
               </Button>
             </div>

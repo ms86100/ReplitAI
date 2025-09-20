@@ -9,7 +9,17 @@ class BudgetApiService {
       const body = options.body;
       
       const response = await apiRequest(method as 'GET' | 'POST' | 'PUT' | 'DELETE', endpoint, body ? JSON.parse(body as string) : undefined);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
       const data = await response.json();
+      
+      if (data && !data.success) {
+        throw new Error(data.error || 'API request failed');
+      }
+      
       return data;
     } catch (error) {
       console.error('❌ Budget API Error:', {
