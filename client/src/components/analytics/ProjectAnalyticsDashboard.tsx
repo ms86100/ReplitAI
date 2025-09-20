@@ -99,6 +99,65 @@ interface ProjectAnalyticsData {
   };
 }
 
+interface ProjectCompletionGaugeProps {
+  totalTasks: number;
+  completedTasks: number;
+}
+
+const ProjectCompletionGauge: React.FC<ProjectCompletionGaugeProps> = ({ totalTasks, completedTasks }) => {
+  // Calculate completion percentage
+  const completionPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+  
+  // Create gauge data - we'll use a simple donut chart to simulate a gauge
+  const gaugeData = [
+    { name: 'Completed', value: completionPercentage, fill: '#10b981' },
+    { name: 'Remaining', value: 100 - completionPercentage, fill: '#e5e7eb' }
+  ];
+
+  return (
+    <div className="h-[200px] flex flex-col items-center justify-center">
+      <div className="relative">
+        <ResponsiveContainer width={160} height={160}>
+          <RechartsPieChart>
+            <Pie
+              data={gaugeData}
+              cx="50%"
+              cy="50%"
+              startAngle={90}
+              endAngle={450}
+              innerRadius={50}
+              outerRadius={70}
+              dataKey="value"
+              stroke="none"
+            >
+              {gaugeData.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={entry.fill} />
+              ))}
+            </Pie>
+          </RechartsPieChart>
+        </ResponsiveContainer>
+        
+        {/* Center content */}
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <Target className="h-6 w-6 text-emerald-600 mb-1" />
+          <div className="text-2xl font-bold text-emerald-700">{completionPercentage}%</div>
+          <div className="text-xs text-muted-foreground">Complete</div>
+        </div>
+      </div>
+      
+      {/* Summary stats */}
+      <div className="mt-4 text-center">
+        <div className="text-sm text-muted-foreground">
+          {completedTasks} of {totalTasks} tasks completed
+        </div>
+        <div className="text-xs text-muted-foreground mt-1">
+          Project Completion Status
+        </div>
+      </div>
+    </div>
+  );
+};
+
 interface ProjectAnalyticsDashboardProps {
   projectId: string;
 }
@@ -439,9 +498,10 @@ export const ProjectAnalyticsDashboard: React.FC<ProjectAnalyticsDashboardProps>
                       <Bar dataKey="value" fill="#475569" />
                     </BarChart>
                   ) : (
-                    <div className="h-[200px] flex items-center justify-center text-muted-foreground">
-                      No budget category data available
-                    </div>
+                    <ProjectCompletionGauge 
+                      totalTasks={taskAnalytics.totalTasks}
+                      completedTasks={taskAnalytics.completedTasks}
+                    />
                   )}
                 </ResponsiveContainer>
               </div>
