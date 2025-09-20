@@ -4,6 +4,7 @@ import cors from 'cors';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs/promises';
+import nodemailer from 'nodemailer';
 import { storage } from "./storage";
 import { BackupAnalyzer } from "./services/backup-analyzer";
 import { DatabaseRestorer } from "./services/database-restorer";
@@ -23,6 +24,19 @@ const upload = multer({
 const backupAnalyzer = new BackupAnalyzer();
 const databaseRestorer = new DatabaseRestorer();
 const databaseVerifier = new DatabaseVerifier();
+
+// Email service setup
+const createEmailTransporter = () => {
+  return nodemailer.createTransport({
+    host: process.env.EMAIL_HOST,
+    port: parseInt(process.env.EMAIL_PORT || '587'),
+    secure: false, // true for 465, false for other ports
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
+    },
+  });
+};
 
 // Authentication middleware
 async function verifyToken(req: any, res: any, next: any) {
@@ -4017,6 +4031,130 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : "Failed to perform full sync"
+      });
+    }
+  });
+
+  // Email reminder API - Send reminder for overdue task
+  app.post("/api/analytics-service/send-overdue-reminder", verifyToken, async (req, res) => {
+    try {
+      const { taskId } = req.body;
+      
+      if (!taskId) {
+        return res.status(400).json({
+          success: false,
+          error: "Task ID is required"
+        });
+      }
+      
+      // Get task details with stakeholder information and project access verification
+      const taskWithOwner = await db.select({
+        task: tasks,
+        stakeholder: stakeholders,
+        project: projects
+      })
+        .from(tasks)
+        .leftJoin(stakeholders, eq(tasks.owner_id, stakeholders.id))
+        .leftJoin(projects, eq(tasks.project_id, projects.id))
+        .where(eq(tasks.id, taskId))
+        .limit(1);
+        
+      if (taskWithOwner.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: "Task not found"
+        });
+      }
+      
+      const { task: taskData, stakeholder, project } = taskWithOwner[0];
+      
+      // Verify user has access to this project (project owner or task owner)
+      const isProjectOwner = project?.created_by === req.user?.id;
+      const isTaskOwner = taskData.owner_id === req.user?.id;
+      
+      if (!isProjectOwner && !isTaskOwner) {
+        return res.status(403).json({
+          success: false,
+          error: "You don't have permission to send reminders for this task"
+        });
+      }
+      
+      if (!taskData.due_date) {
+        return res.status(400).json({
+          success: false,
+          error: "Task has no due date"
+        });
+      }
+      
+      if (!stakeholder || !stakeholder.email) {
+        return res.status(400).json({
+          success: false,
+          error: "Task owner has no email address"
+        });
+      }
+      
+      const dueDate = new Date(taskData.due_date);
+      const today = new Date();
+      const daysOverdue = Math.floor((today.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
+      
+      // Ensure task is actually overdue
+      if (daysOverdue <= 0) {
+        return res.status(400).json({
+          success: false,
+          error: "Task is not overdue"
+        });
+      }
+      
+      // Create email transporter
+      const transporter = createEmailTransporter();
+      
+      // Email content
+      const emailSubject = `Overdue Task Reminder: ${taskData.title}`;
+      const emailBody = `
+        <h2>Task Overdue Reminder</h2>
+        <p>Hello,</p>
+        <p>This is a reminder that the following task is overdue:</p>
+        
+        <div style="background-color: #f9f9f9; padding: 15px; border-left: 4px solid #f59e0b; margin: 20px 0;">
+          <h3 style="margin-top: 0; color: #f59e0b;">⚠️ ${taskData.title}</h3>
+          <p><strong>Due Date:</strong> ${dueDate.toDateString()}</p>
+          <p><strong>Days Overdue:</strong> ${daysOverdue} days</p>
+          <p><strong>Status:</strong> ${taskData.status}</p>
+          ${taskData.description ? `<p><strong>Description:</strong> ${taskData.description}</p>` : ''}
+        </div>
+        
+        <p>Please take immediate action to complete this task or update its status.</p>
+        <p>Thank you for your attention to this matter.</p>
+        
+        <hr style="margin: 20px 0;">
+        <p style="font-size: 12px; color: #666;">
+          This is an automated reminder from the Airbus Project Hub.
+        </p>
+      `;
+      
+      // Send email
+      await transporter.sendMail({
+        from: process.env.EMAIL_USER,
+        to: stakeholder.email,
+        subject: emailSubject,
+        html: emailBody,
+      });
+      
+      res.json({
+        success: true,
+        data: {
+          message: `Reminder email sent to ${stakeholder.name} (${stakeholder.email})`,
+          taskTitle: taskData.title,
+          daysOverdue,
+          recipientEmail: stakeholder.email
+        }
+      });
+      
+    } catch (error) {
+      console.error('Failed to send overdue reminder:', error);
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to send reminder email"
       });
     }
   });

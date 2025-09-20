@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { apiClient } from '@/services/api';
 import {
@@ -38,7 +39,9 @@ import {
   PieChart,
   CheckCircle,
   Calendar,
-  User
+  User,
+  Mail,
+  Send
 } from 'lucide-react';
 
 interface ProjectAnalyticsData {
@@ -102,6 +105,7 @@ interface ProjectAnalyticsDashboardProps {
 export const ProjectAnalyticsDashboard: React.FC<ProjectAnalyticsDashboardProps> = ({ projectId }) => {
   const [analyticsData, setAnalyticsData] = useState<ProjectAnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [sendingReminder, setSendingReminder] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -212,6 +216,35 @@ export const ProjectAnalyticsDashboard: React.FC<ProjectAnalyticsDashboardProps>
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Handle sending reminder email
+  const handleSendReminder = async (taskId: string, taskTitle: string, owner: string) => {
+    try {
+      setSendingReminder(taskId);
+      
+      const response = await apiClient.sendOverdueReminder(taskId);
+      
+      if (response.success) {
+        toast({
+          title: 'Reminder Sent',
+          description: response.data?.message || `Email reminder sent to ${owner}`,
+          variant: 'default'
+        });
+      } else {
+        throw new Error(response.error || 'Failed to send reminder');
+      }
+      
+    } catch (error) {
+      console.error('Failed to send reminder:', error);
+      toast({
+        title: 'Reminder Failed',
+        description: error instanceof Error ? error.message : 'Failed to send reminder email',
+        variant: 'destructive'
+      });
+    } finally {
+      setSendingReminder(null);
     }
   };
 
@@ -478,18 +511,47 @@ export const ProjectAnalyticsDashboard: React.FC<ProjectAnalyticsDashboardProps>
                     <TableHead>Owner</TableHead>
                     <TableHead>Due Date</TableHead>
                     <TableHead>Days Overdue</TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {taskAnalytics.overdueTasksList.slice(0, 5).map((task) => (
                     <TableRow key={task.id}>
-                      <TableCell className="font-medium">{task.title}</TableCell>
-                      <TableCell>{task.owner}</TableCell>
-                      <TableCell>{task.dueDate}</TableCell>
+                      <TableCell className="font-medium" data-testid={`text-task-title-${task.id}`}>
+                        {task.title}
+                      </TableCell>
+                      <TableCell data-testid={`text-task-owner-${task.id}`}>
+                        {task.owner}
+                      </TableCell>
+                      <TableCell data-testid={`text-task-due-date-${task.id}`}>
+                        {task.dueDate}
+                      </TableCell>
                       <TableCell>
-                        <Badge variant="destructive">
+                        <Badge variant="destructive" data-testid={`badge-days-overdue-${task.id}`}>
                           {task.daysOverdue} days
                         </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleSendReminder(task.id, task.title, task.owner)}
+                          disabled={sendingReminder === task.id || task.owner === 'Unassigned'}
+                          className="flex items-center gap-2"
+                          data-testid={`button-send-reminder-${task.id}`}
+                        >
+                          {sendingReminder === task.id ? (
+                            <>
+                              <div className="w-4 h-4 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin" />
+                              Sending...
+                            </>
+                          ) : (
+                            <>
+                              <Send className="h-4 w-4" />
+                              Send Reminder
+                            </>
+                          )}
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}

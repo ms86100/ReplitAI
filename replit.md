@@ -67,3 +67,8 @@ Preferred communication style: Simple, everyday language.
 - **multer**: File upload handling for backup restoration
 - **compression**: Response compression middleware
 - **morgan**: HTTP request logging
+
+## Email Services
+- **nodemailer**: SMTP email sending for overdue task reminders
+- **Email Configuration**: Uses SMTP credentials stored in environment variables (EMAIL_HOST, EMAIL_PORT, EMAIL_USER, EMAIL_PASS)
+- **Overdue Task Reminders**: Automated email notifications for overdue tasks with HTML formatting

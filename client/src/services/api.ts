@@ -1225,6 +1225,18 @@ class ApiClient {
     return this.makeRequest(ep, { method: 'GET' });
   }
 
+  // Send overdue task reminder email
+  async sendOverdueReminder(taskId: string): Promise<ApiResponse<any>> {
+    const ep = this.resolveEndpoint(
+      `/analytics-service/send-overdue-reminder`,
+      `/analytics-service/send-overdue-reminder`
+    );
+    return this.makeRequest(ep, {
+      method: 'POST',
+      body: JSON.stringify({ taskId }),
+    });
+  }
+
   // Maintenance: reset and seed demo data
   async resetAndSeedDemo(keepTeams: boolean = true): Promise<ApiResponse<{ projects: { projectId: string; name: string }[] }>> {
     const ep = this.resolveEndpoint('/seed-demo', '/seed-demo');
