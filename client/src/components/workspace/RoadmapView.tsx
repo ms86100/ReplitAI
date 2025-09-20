@@ -119,8 +119,8 @@ export function RoadmapView() {
 
       // Fetch stakeholders separately as they're still needed
       const stakeholdersResponse = await apiClient.getStakeholders(id!);
-      if (stakeholdersResponse.success) {
-        setStakeholders(stakeholdersResponse.data.stakeholders || []);
+      if (stakeholdersResponse.success && stakeholdersResponse.data) {
+        setStakeholders(Array.isArray(stakeholdersResponse.data) ? stakeholdersResponse.data : stakeholdersResponse.data.stakeholders || []);
       }
       
     } catch (error) {

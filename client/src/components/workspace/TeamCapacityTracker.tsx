@@ -532,18 +532,52 @@ export function TeamCapacityTracker({ projectId }: TeamCapacityTrackerProps) {
 
   const handleDeleteIteration = async (iterationId: string) => {
     try {
-      const response = await fetch(`https://knivoexfpvqohsvpsziq.supabase.co/functions/v1/capacity-service/projects/${projectId}/capacity/${iterationId}?type=iteration`, {
+      const response = await fetch(`/api/capacity-service/projects/${projectId}/capacity/${iterationId}?type=iteration`, {
         method: 'DELETE',
         headers: {
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtuaXZvZXhmcHZxb2hzdnBzemlxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYyMjgyOTgsImV4cCI6MjA3MTgwNDI5OH0.TfV3FF9FNYXVv_f5TTgne4-CrDWmN1xOed2ZIjzn96Q',
           'Authorization': `Bearer ${getAuthToken()}`,
           'Content-Type': 'application/json'
         }
       });
       
-      const data = await response.json();
+      if (!response.ok) {
+        let errorMessage = 'Failed to delete iteration';
+        try {
+          const data = await response.json();
+          errorMessage = data.error || errorMessage;
+        } catch (e) {
+          // If response.json() fails, it might be an empty response
+          if (response.status === 204 || response.status === 200) {
+            // Success but no content - this is actually successful deletion
+            toast({
+              title: "Iteration Deleted",
+              description: "The iteration and all its capacity data have been deleted.",
+            });
+            await fetchCapacityData();
+            return;
+          }
+        }
+        throw new Error(errorMessage);
+      }
+
+      // Try to parse response, but handle empty responses gracefully
+      let data = null;
+      try {
+        data = await response.json();
+      } catch (e) {
+        // Empty response is ok for DELETE operations
+        if (response.status === 204 || response.status === 200) {
+          toast({
+            title: "Iteration Deleted", 
+            description: "The iteration and all its capacity data have been deleted.",
+          });
+          await fetchCapacityData();
+          return;
+        }
+        throw new Error('Empty response from server');
+      }
       
-      if (!response.ok || !data.success) {
+      if (data && !data.success) {
         throw new Error(data.error || 'Failed to delete iteration');
       }
 
