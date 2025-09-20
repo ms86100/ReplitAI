@@ -533,6 +533,149 @@ const ExecutiveDashboard = () => {
             </Card>
           </div>
 
+          {/* Milestones Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Target className="h-5 w-5" />
+                Project Milestones
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {analytics.milestoneAnalytics?.milestones?.length > 0 ? (
+                  analytics.milestoneAnalytics.milestones.map((milestone: any, index: number) => (
+                    <div key={milestone.id || index} className="border rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-lg font-semibold">{milestone.title}</h3>
+                        <span className={`px-2 py-1 rounded text-sm ${
+                          milestone.status === 'completed' ? 'bg-green-100 text-green-800' :
+                          milestone.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {milestone.status?.replace('_', ' ').toUpperCase()}
+                        </span>
+                      </div>
+                      {milestone.due_date && (
+                        <p className="text-sm text-muted-foreground mb-2">
+                          Due: {new Date(milestone.due_date).toLocaleDateString()}
+                        </p>
+                      )}
+                      {milestone.tasks && milestone.tasks.length > 0 && (
+                        <div className="mt-3">
+                          <h4 className="text-sm font-medium mb-2">Tasks ({milestone.tasks.length})</h4>
+                          <div className="space-y-1">
+                            {milestone.tasks.slice(0, 3).map((task: any, taskIndex: number) => (
+                              <div key={task.id || taskIndex} className="flex items-center text-sm">
+                                <div className={`w-2 h-2 rounded-full mr-2 ${
+                                  task.status === 'completed' ? 'bg-green-500' :
+                                  task.status === 'in_progress' ? 'bg-blue-500' :
+                                  'bg-gray-400'
+                                }`}></div>
+                                <span className="truncate">{task.title}</span>
+                              </div>
+                            ))}
+                            {milestone.tasks.length > 3 && (
+                              <div className="text-xs text-muted-foreground">
+                                +{milestone.tasks.length - 3} more tasks
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center text-muted-foreground py-8">
+                    No milestones defined for this project
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Risks Table */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5" />
+                Risk Register
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Risk</TableHead>
+                      <TableHead>Category</TableHead>
+                      <TableHead>Probability</TableHead>
+                      <TableHead>Impact</TableHead>
+                      <TableHead>Risk Score</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Mitigation</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {analytics.riskAnalysis?.risks?.length > 0 ? (
+                      analytics.riskAnalysis.risks.map((risk: any, index: number) => (
+                        <TableRow key={risk.id || index}>
+                          <TableCell className="font-medium">{risk.title}</TableCell>
+                          <TableCell>{risk.category}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center">
+                              <div className={`w-3 h-3 rounded-full mr-2 ${
+                                (risk.probability || 0) >= 0.7 ? 'bg-red-500' :
+                                (risk.probability || 0) >= 0.4 ? 'bg-yellow-500' :
+                                'bg-green-500'
+                              }`}></div>
+                              {Math.round((risk.probability || 0) * 100)}%
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center">
+                              <div className={`w-3 h-3 rounded-full mr-2 ${
+                                (risk.impact || 0) >= 0.7 ? 'bg-red-500' :
+                                (risk.impact || 0) >= 0.4 ? 'bg-yellow-500' :
+                                'bg-green-500'
+                              }`}></div>
+                              {Math.round((risk.impact || 0) * 100)}%
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <span className={`px-2 py-1 rounded text-sm ${
+                              (risk.probability || 0) * (risk.impact || 0) >= 0.6 ? 'bg-red-100 text-red-800' :
+                              (risk.probability || 0) * (risk.impact || 0) >= 0.3 ? 'bg-yellow-100 text-yellow-800' :
+                              'bg-green-100 text-green-800'
+                            }`}>
+                              {Math.round((risk.probability || 0) * (risk.impact || 0) * 100)}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <span className={`px-2 py-1 rounded text-sm ${
+                              risk.status === 'closed' ? 'bg-green-100 text-green-800' :
+                              risk.status === 'mitigated' ? 'bg-blue-100 text-blue-800' :
+                              'bg-red-100 text-red-800'
+                            }`}>
+                              {risk.status?.toUpperCase()}
+                            </span>
+                          </TableCell>
+                          <TableCell className="max-w-xs truncate">{risk.mitigation_plan || 'N/A'}</TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                          No risks registered for this project
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Detailed Task Table */}
           <Card>
             <CardHeader>
