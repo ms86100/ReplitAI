@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -33,7 +32,6 @@ import {
   CheckSquare,
   Shield,
   Users,
-  TrendingUp,
   AlertTriangle,
   BarChart3,
   PieChart,
@@ -107,71 +105,35 @@ interface ProjectCompletionGaugeProps {
 const ProjectCompletionGauge: React.FC<ProjectCompletionGaugeProps> = ({ totalTasks, completedTasks }) => {
   // Calculate completion percentage
   const completionPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-  
-  // Create gauge data for semi-circular gauge
-  const gaugeData = [
-    { name: 'Completed', value: completionPercentage, fill: '#14b8a6' }, // Teal color
-    { name: 'Remaining', value: 100 - completionPercentage, fill: '#e5e7eb' } // Light gray
-  ];
-
-  // Calculate needle rotation angle (0% = -90deg, 100% = 90deg)
-  const needleAngle = -90 + (completionPercentage * 1.8); // 1.8 = 180deg / 100%
 
   return (
-    <div className="h-[200px] flex flex-col items-center justify-center">
-      <div className="relative">
-        <ResponsiveContainer width={180} height={120}>
-          <RechartsPieChart>
-            <Pie
-              data={gaugeData}
-              cx="50%"
-              cy="85%"
-              startAngle={-180}
-              endAngle={0}
-              innerRadius={50}
-              outerRadius={80}
-              dataKey="value"
-              stroke="none"
-            >
-              {gaugeData.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={entry.fill} />
-              ))}
-            </Pie>
-          </RechartsPieChart>
-        </ResponsiveContainer>
-        
-        {/* Needle */}
-        <div 
-          className="absolute w-0.5 h-8 bg-orange-500 origin-bottom"
-          style={{
-            left: '50%',
-            bottom: '25%',
-            transform: `translateX(-50%) rotate(${needleAngle}deg)`,
-            transformOrigin: 'bottom center'
-          }}
-        />
-        
-        {/* Center dot */}
-        <div 
-          className="absolute w-3 h-3 bg-orange-500 rounded-full"
-          style={{
-            left: '50%',
-            bottom: '25%',
-            transform: 'translateX(-50%) translateY(50%)'
-          }}
-        />
-        
-        {/* Percentage display */}
-        <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 text-center">
-          <div className="text-2xl font-bold text-teal-700" data-testid="text-completion-percentage">
-            {completionPercentage}%
-          </div>
-          <div className="text-xs text-muted-foreground">Complete</div>
+    <div className="h-[200px] flex flex-col items-center justify-center p-4">
+      {/* Percentage display */}
+      <div className="text-center mb-4">
+        <div className="text-3xl font-bold text-teal-600" data-testid="text-completion-percentage">
+          {completionPercentage}%
+        </div>
+        <div className="text-sm text-muted-foreground mt-1">Complete</div>
+      </div>
+      
+      {/* Progress bar */}
+      <div className="w-full max-w-xs mb-4">
+        <div className="flex items-center gap-2">
+          {/* Completed segment */}
+          <div 
+            className="h-6 bg-teal-500 rounded-l-md flex-shrink-0"
+            style={{ width: `${completionPercentage}%` }}
+          />
+          {/* Remaining segment */}
+          <div 
+            className="h-6 bg-gray-300 rounded-r-md flex-shrink-0"
+            style={{ width: `${100 - completionPercentage}%` }}
+          />
         </div>
       </div>
       
       {/* Summary stats */}
-      <div className="mt-2 text-center" data-testid="text-completion-summary">
+      <div className="text-center" data-testid="text-completion-summary">
         <div className="text-sm text-muted-foreground">
           {completedTasks} of {totalTasks} tasks completed
         </div>
@@ -659,15 +621,9 @@ export const ProjectAnalyticsDashboard: React.FC<ProjectAnalyticsDashboardProps>
       </div>
 
       {/* Detailed Analytics Tabs */}
-      <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="budget">Budget Details</TabsTrigger>
-          <TabsTrigger value="team">Team Analytics</TabsTrigger>
-          <TabsTrigger value="insights">Insights</TabsTrigger>
-        </TabsList>
+      <div className="w-full">
 
-        <TabsContent value="overview" className="space-y-6">
+        <div className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Project Health Radar Chart */}
             <Card>
@@ -696,9 +652,9 @@ export const ProjectAnalyticsDashboard: React.FC<ProjectAnalyticsDashboardProps>
             </Card>
 
           </div>
-        </TabsContent>
+        </div>
 
-        <TabsContent value="budget" className="space-y-6">
+        {/* Removed Budget Details, Team Analytics, and Insights tabs as requested */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Budget Spend by Category */}
             <Card>
@@ -760,9 +716,6 @@ export const ProjectAnalyticsDashboard: React.FC<ProjectAnalyticsDashboardProps>
               </CardContent>
             </Card>
           </div>
-        </TabsContent>
-
-        <TabsContent value="team" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Team Capacity */}
             <Card>
@@ -817,9 +770,6 @@ export const ProjectAnalyticsDashboard: React.FC<ProjectAnalyticsDashboardProps>
               </CardContent>
             </Card>
           </div>
-        </TabsContent>
-
-        <TabsContent value="insights" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Risk Analysis */}
             <Card>
@@ -870,8 +820,7 @@ export const ProjectAnalyticsDashboard: React.FC<ProjectAnalyticsDashboardProps>
               </CardContent>
             </Card>
           </div>
-        </TabsContent>
-      </Tabs>
+      </div>
     </div>
   );
 };
