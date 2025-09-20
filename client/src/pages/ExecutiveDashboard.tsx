@@ -242,6 +242,12 @@ const ExecutiveDashboard = () => {
   const overdueTasks = tasks.overdueTasks || 0;
   const allTasks = tasks.overdueTasksList || [];
   
+  // Fetch all tasks for complete task table
+  const { data: allTasksData } = useQuery({
+    queryKey: ['/api/workspace-service/projects', projectId, 'tasks'],
+    enabled: !!projectId
+  });
+  
   // Calculate derived metrics
   const futureTasks = Math.max(0, totalTasks - completedTasks - overdueTasks);
   const onTrackTasks = tasks.tasksByStatus?.find((s: any) => s.status === 'in_progress')?.count || 0;
@@ -442,10 +448,10 @@ const ExecutiveDashboard = () => {
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
                   <BarChart data={[
-                    { priority: 'Critical', count: allTasks.filter((t: any) => t.priority === 'critical').length, fill: '#ef4444' },
-                    { priority: 'High', count: allTasks.filter((t: any) => t.priority === 'high').length, fill: '#f97316' },
-                    { priority: 'Medium', count: allTasks.filter((t: any) => t.priority === 'medium').length, fill: '#eab308' },
-                    { priority: 'Low', count: allTasks.filter((t: any) => t.priority === 'low').length, fill: '#22c55e' }
+                    { priority: 'Critical', count: (allTasksData?.data || allTasks).filter((t: any) => t.priority === 'critical').length, fill: '#ef4444' },
+                    { priority: 'High', count: (allTasksData?.data || allTasks).filter((t: any) => t.priority === 'high').length, fill: '#f97316' },
+                    { priority: 'Medium', count: (allTasksData?.data || allTasks).filter((t: any) => t.priority === 'medium').length, fill: '#eab308' },
+                    { priority: 'Low', count: (allTasksData?.data || allTasks).filter((t: any) => t.priority === 'low').length, fill: '#22c55e' }
                   ]}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="priority" />
@@ -707,8 +713,8 @@ const ExecutiveDashboard = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {/* Show sample tasks for demonstration - in production, would fetch full task list */}
-                    {allTasks?.slice(0, 10).map((task: any, index: number) => (
+                    {/* Show all project tasks */}
+                    {(allTasksData?.data || allTasks)?.slice(0, 10).map((task: any, index: number) => (
                       <TableRow key={task.id || index}>
                         <TableCell>
                           <div className={`w-3 h-3 rotate-45 ${
@@ -769,30 +775,6 @@ const ExecutiveDashboard = () => {
             </CardContent>
           </Card>
 
-          {/* Navigation Tabs */}
-          <div className="flex items-center justify-center space-x-1 bg-muted p-1 rounded-lg">
-            {[
-              'Portfolio Dashboard',
-              'Portfolio Timeline', 
-              'Portfolio Milestones',
-              'Resource Dashboard',
-              'Resource Assignments',
-              'Task Overview',
-              'Project Timeline',
-              'My Work',
-              'My Timeline'
-            ].map((tab) => (
-              <Button
-                key={tab}
-                variant={tab === 'Task Overview' ? 'default' : 'ghost'}
-                size="sm"
-                className="text-xs"
-                data-testid={`tab-${tab.toLowerCase().replace(' ', '-')}`}
-              >
-                {tab}
-              </Button>
-            ))}
-          </div>
         </div>
       </div>
     </DashboardLayout>
