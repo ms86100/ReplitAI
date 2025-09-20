@@ -374,13 +374,13 @@ const ExecutiveDashboard = () => {
               title="Late Tasks"
               value={lateTasks}
               icon={<Clock className="h-5 w-5 text-white" />}
-              color="bg-orange-500"
+              color={lateTasks > 0 ? "bg-red-500" : "bg-orange-500"}
             />
             <KPICard
               title="Overdue Tasks"
               value={overdueTasks}
               icon={<AlertTriangle className="h-5 w-5 text-white" />}
-              color="bg-red-500"
+              color={overdueTasks > 0 ? "bg-red-600" : "bg-red-500"}
             />
             <KPICard
               title="Effort"
@@ -434,56 +434,60 @@ const ExecutiveDashboard = () => {
               </CardContent>
             </Card>
 
-            {/* Tasks by Project > Bucket */}
+            {/* Tasks by Priority */}
             <Card className="col-span-1">
               <CardHeader>
-                <CardTitle className="text-lg">Tasks by Project - Bucket</CardTitle>
+                <CardTitle className="text-lg">Tasks by Priority</CardTitle>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
-                  <PieChart>
-                    <Pie
-                      data={tasksByProjectData}
-                      cx="50%"
-                      cy="50%"
-                      outerRadius={120}
-                      paddingAngle={2}
-                      dataKey="value"
-                    >
-                      {tasksByProjectData.map((entry: any, index: number) => (
-                        <Cell key={`cell-${index}`} fill={entry.color || `#${Math.floor(Math.random()*16777215).toString(16)}`} />
-                      ))}
-                    </Pie>
+                  <BarChart data={[
+                    { priority: 'Critical', count: allTasks.filter((t: any) => t.priority === 'critical').length, fill: '#ef4444' },
+                    { priority: 'High', count: allTasks.filter((t: any) => t.priority === 'high').length, fill: '#f97316' },
+                    { priority: 'Medium', count: allTasks.filter((t: any) => t.priority === 'medium').length, fill: '#eab308' },
+                    { priority: 'Low', count: allTasks.filter((t: any) => t.priority === 'low').length, fill: '#22c55e' }
+                  ]}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="priority" />
+                    <YAxis />
                     <Tooltip />
-                    <Legend />
-                  </PieChart>
+                    <Bar dataKey="count" />
+                  </BarChart>
                 </ResponsiveContainer>
               </CardContent>
             </Card>
 
-            {/* Effort (Hours) by Project > Bucket */}
+            {/* Budget Allocation vs Spent */}
             <Card className="col-span-1">
               <CardHeader>
-                <CardTitle className="text-lg">Effort (Hours) by Project - Bucket</CardTitle>
+                <CardTitle className="text-lg">Budget: Allocated vs Spent</CardTitle>
               </CardHeader>
               <CardContent>
-                {effortByProjectData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={300}>
-                    <Treemap
-                      data={effortByProjectData}
-                      dataKey="value"
-                      stroke="#fff"
-                    >
-                      {effortByProjectData.map((entry: any, index: number) => (
-                        <Cell key={`cell-${index}`} fill={entry.fill} />
-                      ))}
-                    </Treemap>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="flex items-center justify-center h-[300px] text-muted-foreground">
-                    No effort data available
-                  </div>
-                )}
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={[
+                    { 
+                      category: 'Allocated', 
+                      amount: budget.totalAllocated || 0,
+                      fill: '#3b82f6'
+                    },
+                    { 
+                      category: 'Spent', 
+                      amount: budget.totalSpent || 0,
+                      fill: '#ef4444'
+                    },
+                    { 
+                      category: 'Remaining', 
+                      amount: (budget.totalAllocated || 0) - (budget.totalSpent || 0),
+                      fill: '#22c55e'
+                    }
+                  ]}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="category" />
+                    <YAxis />
+                    <Tooltip formatter={(value) => [`€${Math.round(Number(value))}K`, 'Amount']} />
+                    <Bar dataKey="amount" />
+                  </BarChart>
+                </ResponsiveContainer>
               </CardContent>
             </Card>
           </div>
