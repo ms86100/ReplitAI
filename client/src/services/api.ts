@@ -1237,6 +1237,79 @@ class ApiClient {
     });
   }
 
+  // ================== NEW ANALYTICS API METHODS ==================
+  
+  // Velocity Analytics - Task completion trends
+  async getVelocityAnalytics(projectId: string, from?: string, to?: string): Promise<ApiResponse<any[]>> {
+    const params = new URLSearchParams({ projectId });
+    if (from) params.append('from', from);
+    if (to) params.append('to', to);
+    
+    const ep = this.resolveEndpoint(
+      `/analytics/velocity?${params.toString()}`,
+      `/analytics/velocity?${params.toString()}`
+    );
+    return this.makeRequest(ep, { method: 'GET' });
+  }
+
+  // Lead Time Metrics - Delivery performance tracking
+  async getLeadTimeAnalytics(projectId: string, from?: string, to?: string): Promise<ApiResponse<any>> {
+    const params = new URLSearchParams({ projectId });
+    if (from) params.append('from', from);
+    if (to) params.append('to', to);
+    
+    const ep = this.resolveEndpoint(
+      `/analytics/lead-time?${params.toString()}`,
+      `/analytics/lead-time?${params.toString()}`
+    );
+    return this.makeRequest(ep, { method: 'GET' });
+  }
+
+  // Aging Work Analysis - Identify bottlenecks
+  async getAgingWorkAnalytics(projectId: string): Promise<ApiResponse<any>> {
+    const ep = this.resolveEndpoint(
+      `/analytics/aging-work?projectId=${projectId}`,
+      `/analytics/aging-work?projectId=${projectId}`
+    );
+    return this.makeRequest(ep, { method: 'GET' });
+  }
+
+  // Forecast Engine - Predict completion dates
+  async getForecastAnalytics(projectId: string): Promise<ApiResponse<any>> {
+    const ep = this.resolveEndpoint(
+      `/analytics/forecast?projectId=${projectId}`,
+      `/analytics/forecast?projectId=${projectId}`
+    );
+    return this.makeRequest(ep, { method: 'GET' });
+  }
+
+  // Team Focus Metrics - Planned vs unplanned work
+  async getTeamFocusAnalytics(projectId: string): Promise<ApiResponse<any[]>> {
+    const ep = this.resolveEndpoint(
+      `/analytics/team-focus?projectId=${projectId}`,
+      `/analytics/team-focus?projectId=${projectId}`
+    );
+    return this.makeRequest(ep, { method: 'GET' });
+  }
+
+  // Jira Sync Health - Integration status
+  async getJiraSyncHealth(projectId: string): Promise<ApiResponse<any>> {
+    const ep = this.resolveEndpoint(
+      `/jira/sync-health?projectId=${projectId}`,
+      `/jira/sync-health?projectId=${projectId}`
+    );
+    return this.makeRequest(ep, { method: 'GET' });
+  }
+
+  // Budget Summary - Burn rate and runway
+  async getBudgetSummary(projectId: string): Promise<ApiResponse<any>> {
+    const ep = this.resolveEndpoint(
+      `/budget/summary?projectId=${projectId}`,
+      `/budget/summary?projectId=${projectId}`
+    );
+    return this.makeRequest(ep, { method: 'GET' });
+  }
+
   // Maintenance: reset and seed demo data
   async resetAndSeedDemo(keepTeams: boolean = true): Promise<ApiResponse<{ projects: { projectId: string; name: string }[] }>> {
     const ep = this.resolveEndpoint('/seed-demo', '/seed-demo');

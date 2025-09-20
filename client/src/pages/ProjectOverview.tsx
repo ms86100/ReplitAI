@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { ArrowLeft, Edit3, Trash2, Calendar, Users, CheckCircle, Clock, AlertCircle, Plus, ChevronDown, Table } from 'lucide-react';
+import { ArrowLeft, Edit3, Trash2, Calendar, Users, CheckCircle, Clock, AlertCircle, Plus, ChevronDown, Table, BarChart3 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import DashboardLayout from '@/components/DashboardLayout';
 import { RoadmapView } from '@/components/workspace/RoadmapView';
@@ -203,6 +203,14 @@ const ProjectOverview = () => {
                 </Button>
               </div>
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                <Button
+                  onClick={() => setLocation(`/projects/${id}/dashboard`)}
+                  className="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg"
+                  data-testid="button-executive-dashboard"
+                >
+                  <BarChart3 className="h-4 w-4 mr-2" />
+                  Executive Dashboard
+                </Button>
                 <Button
                   onClick={() => setLocation(`/project/${id}/roadmap`)}
                   className="w-full sm:w-auto"
