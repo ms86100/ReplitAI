@@ -1,0 +1,274 @@
+Feature: AOP Table — multi-row CRUD + Type dropdown + Save
+1) Purpose
+
+Allow users to create and manage multiple AOP entries in a single screen: add new rows, edit rows inline, delete rows, choose Type from a dropdown (Development / Maintenance / Obsolescence / Enhancement / Other), add Comments, and persist all changes with a single Save action (or discard).
+
+2) Data fields (columns)
+
+Each row represents one AOP entry with these columns:
+
+projectName (string)- auto capture from the selected project 
+
+type (enum / dropdown) — required; values: Development, Maintenance, Obsolescence, Enhancement, Support, Other
+
+deliverables (string) — short summary; required
+
+businessImpact (string) — e.g., High / Medium / Low or free text (product owner choice)
+
+startDate (date) — required
+
+endDate (date) — required; must be >= startDate
+
+criticalSkills (string) — comma-separated or tag list
+
+riskProbability (enum) — High, Medium, Low
+
+riskImpact (enum) — High, Medium, Low
+
+mitigationPlan (string) — short text
+
+impactIfDelayed (string) — short text
+
+plannedBudget (number, currency) — optional but recommended
+
+comments (string) — optional free text
+
+id (uuid / integer) — internal DB id (null for new rows)
+
+status (client-side only) — unchanged / new / modified / deleted (used in UI and for Save payload)
+
+3) UI / UX Behavior (High-level)
+
+Screen: AOP Planner → shows a paginated table/grid with the columns above.
+
+Top actions:
+
++ Add Row (creates a new editable row at top or bottom)
+
+Bulk Add (optional CSV import — out of scope unless requested)
+
+Save All (persist all new and modified rows and process deletions)
+
+Discard Changes (revert unsaved changes)
+
+Row-level actions:
+
+Edit toggles inline editing for that row
+
+Delete marks row as deleted visually (soft delete) — shows Undo inline for 5s
+
+Duplicate (optional) — copies row to a new new row for fast entry
+
+Inline editing:
+
+Editable cells (text inputs, date pickers, dropdowns)
+
+Type is a dropdown control with pre-defined options and an Other option which shows a small text field to enter custom text.
+
+Critical Skills should show as tag input (simple comma-separated if tag control not available).
+
+Validation:
+
+Required fields highlighted (red) when empty on Save or on blur.
+
+endDate must be >= startDate.
+
+plannedBudget numeric validation and optional min/max constraints if desired.
+
+Visual states:
+
+New rows show a badge NEW
+
+Modified rows have a small dot or row highlight
+
+Deleted rows appear greyed out with strike-through and an Undo button before Save; Confirm delete on Save if you want permanent removal.
+
+Keyboard support:
+
+Enter to save cell, Tab to move to next cell.
+
+Mobile responsive:
+
+Table collapses to stacked card view with same actions.
+
+4) Save / Sync Behavior
+
+Save All collects rows with status in [new, modified, deleted] and sends one API request:
+
+Payload: { additions: [...], updates: [...], deletions: [ids] }
+
+Server processes additions → returns created IDs. Update rows should return updated records.
+
+On success: UI updates id for new rows, clears status to unchanged, shows success toast.
+
+On partial failure: return per-row results with error messages; UI shows per-row error and leaves rows in their previous client status so user can retry after fix.
+
+Optional optimistic locking: include version or updatedAt for update conflict detection. If conflict, return 409 with current server data.
+
+5) API Design (suggested REST)
+5.1 GET list
+
+GET /api/aop?projectId=<>&page=1&pageSize=50&filterType=Development
+
+Response: { total, page, pageSize, items: [{...}] }
+
+5.2 POST bulk save
+
+POST /api/aop/bulk-save
+
+Request body:
+
+{
+  "additions": [
+    {
+      "projectName":"ERP Upgrade",
+      "type":"Development",
+      "deliverables":"Migrate ERP to cloud",
+      "businessImpact":"High",
+      "startDate":"2026-01-10",
+      "endDate":"2026-09-30",
+      "criticalSkills":"Cloud,DB Migration,Security",
+      "riskProbability":"Medium",
+      "riskImpact":"High",
+      "mitigationPlan":"Pilot + rollback",
+      "impactIfDelayed":"Loss of productivity",
+      "plannedBudget":2000000,
+      "comments":"Vendor dependency"
+    }
+  ],
+  "updates": [
+    {
+      "id": 123,
+      "projectName":"Existing Project",
+      "type":"Maintenance",
+      "deliverables":"Patch release",
+      "startDate":"2026-02-01",
+      "endDate":"2026-03-01",
+      "plannedBudget":50000
+    }
+  ],
+  "deletions": [ 345, 678 ]
+}
+
+
+Response:
+
+{
+  "success": true,
+  "added": [{"tempClientId":"c-1","id": 1001}],
+  "updated": [{"id": 123}],
+  "deleted": [345],
+  "errors": [
+    {"rowKey":"c-2","message":"endDate must be after startDate"},
+    {"rowKey":123,"message":"Budget exceeds allowed threshold"}
+  ]
+}
+
+5.3 DELETE single (optional)
+
+DELETE /api/aop/{id}
+
+5.4 Validation endpoint (optional)
+
+POST /api/aop/validate accepts same payload; returns per-row validation results before save.
+
+6) Database Schema (simplified)
+
+Table: aop_entries
+
+id BIGINT / UUID PRIMARY KEY
+
+project_name VARCHAR(255) NOT NULL
+
+type VARCHAR(50) NOT NULL
+
+deliverables TEXT NOT NULL
+
+business_impact VARCHAR(50)
+
+start_date DATE NOT NULL
+
+end_date DATE NOT NULL
+
+critical_skills TEXT
+
+risk_probability VARCHAR(10)
+
+risk_impact VARCHAR(10)
+
+mitigation_plan TEXT
+
+impact_if_delayed TEXT
+
+planned_budget DECIMAL(18,2)
+
+comments TEXT
+
+created_by FK
+
+created_at TIMESTAMP
+
+updated_at TIMESTAMP
+
+is_deleted BOOLEAN DEFAULT false (if using soft delete)
+
+Indexes: project_name, type, start_date, end_date
+
+7) Validation Rules (enforced both client & server)
+
+projectName, type, deliverables, startDate, endDate are required.
+
+type must be one of allowed enums.
+
+endDate >= startDate.
+
+plannedBudget must be numeric and non-negative.
+
+riskProbability and riskImpact must be one of High|Medium|Low if provided.
+
+Trim excessive length on text fields (e.g., projectName <= 255 chars).
+
+Reject rows where all required fields missing (ignore accidental blank rows).
+
+8) Error handling & UX
+
+If bulk save returns errors:
+
+Show toast: “Some rows failed to save. See inline errors.”
+
+Highlight rows with errors and display server message inline.
+
+Allow user to fix those rows and Save All again.
+
+For network errors: keep client status intact and show option Retry Save.
+
+For conflict (409): show server current values and provide Overwrite / Merge / Cancel options (optional advanced feature).
+
+9) Security & Permissions
+
+Only authenticated users with aop.manage role can add/edit/delete.
+
+Row-level visibility: projects may be filtered by user permissions.
+
+Audit log: record create/update/delete with user and timestamp.
+
+10) Tests & Acceptance Criteria
+
+
+11)  Enhancements 
+
+CSV import/export (bulk add rows from CSV).
+
+Inline quick-create templates (re-use previous project templates).
+
+Autosave drafts locally before Save All.
+
+Row-level comments + attachments.
+
+Audit history view per row.
+
+12) UI Mock
+
+
+Footer: pagination + Rows changed: X indicator + Save All repeated.
+
