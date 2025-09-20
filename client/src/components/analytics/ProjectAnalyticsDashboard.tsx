@@ -43,6 +43,7 @@ import {
   Mail,
   Send
 } from 'lucide-react';
+import { useLocation } from 'wouter';
 
 interface ProjectAnalyticsData {
   projectHealth: {
@@ -107,6 +108,7 @@ export const ProjectAnalyticsDashboard: React.FC<ProjectAnalyticsDashboardProps>
   const [loading, setLoading] = useState(true);
   const [sendingReminder, setSendingReminder] = useState<string | null>(null);
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
 
   useEffect(() => {
     fetchAnalyticsData();
@@ -275,6 +277,14 @@ export const ProjectAnalyticsDashboard: React.FC<ProjectAnalyticsDashboardProps>
           <h1 className="text-3xl font-bold tracking-tight">Project Dashboard</h1>
           <p className="text-muted-foreground mt-1">Comprehensive project insights and analytics</p>
         </div>
+        <Button
+          onClick={() => setLocation(`/projects/${projectId}/dashboard`)}
+          className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg"
+          data-testid="button-executive-dashboard"
+        >
+          <BarChart3 className="h-4 w-4 mr-2" />
+          Executive Dashboard
+        </Button>
       </div>
 
       {/* Key Metrics Summary - Airbus Theme */}
