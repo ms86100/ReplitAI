@@ -40,6 +40,14 @@ class BudgetApiService {
     });
   }
 
+  // Update budget category
+  async updateBudgetCategory(projectId: string, categoryId: string, categoryData: any) {
+    return this.makeRequest(`/api/budget-service/projects/${projectId}/categories/${categoryId}`, {
+      method: 'PUT',
+      body: JSON.stringify(categoryData),
+    });
+  }
+
   // Delete budget category
   async deleteBudgetCategory(projectId: string, categoryId: string) {
     return this.makeRequest(`/api/budget-service/projects/${projectId}/categories/${categoryId}`, {
@@ -51,6 +59,14 @@ class BudgetApiService {
   async createSpendingEntry(projectId: string, spendingData: any) {
     return this.makeRequest(`/api/budget-service/projects/${projectId}/spending`, {
       method: 'POST',
+      body: JSON.stringify(spendingData),
+    });
+  }
+
+  // Update spending entry
+  async updateSpendingEntry(projectId: string, spendingId: string, spendingData: any) {
+    return this.makeRequest(`/api/budget-service/projects/${projectId}/spending/${spendingId}`, {
+      method: 'PUT',
       body: JSON.stringify(spendingData),
     });
   }

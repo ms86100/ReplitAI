@@ -1081,6 +1081,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Stakeholder service - Update stakeholder
+  app.put("/api/stakeholder-service/projects/:projectId/stakeholders/:stakeholderId", async (req, res) => {
+    try {
+      const stakeholderId = req.params.stakeholderId;
+      const updateData = {
+        name: req.body.name,
+        email: req.body.email,
+        department: req.body.department,
+        raci: req.body.raci,
+        influence_level: req.body.influence_level,
+        notes: req.body.notes,
+        updated_at: new Date().toISOString()
+      };
+      
+      const updatedStakeholder = await db.update(stakeholders)
+        .set(updateData)
+        .where(eq(stakeholders.id, stakeholderId))
+        .returning();
+      
+      if (updatedStakeholder.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: "Stakeholder not found"
+        });
+      }
+      
+      res.json({
+        success: true,
+        data: updatedStakeholder[0]
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to update stakeholder" 
+      });
+    }
+  });
+
+  // Stakeholder service - Delete stakeholder
+  app.delete("/api/stakeholder-service/projects/:projectId/stakeholders/:stakeholderId", async (req, res) => {
+    try {
+      const stakeholderId = req.params.stakeholderId;
+      
+      const deletedStakeholder = await db.delete(stakeholders)
+        .where(eq(stakeholders.id, stakeholderId))
+        .returning();
+      
+      if (deletedStakeholder.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: "Stakeholder not found"
+        });
+      }
+      
+      res.json({
+        success: true,
+        data: { message: "Stakeholder deleted successfully" }
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to delete stakeholder" 
+      });
+    }
+  });
+
   // Discussion service
   app.get("/api/discussion-service/projects/:projectId/discussions", async (req, res) => {
     try {
@@ -1750,6 +1816,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ 
         success: false,
         error: error instanceof Error ? error.message : "Failed to create milestone" 
+      });
+    }
+  });
+
+  // Milestone service - Update milestone
+  app.put("/api/milestone-service/projects/:projectId/milestones/:milestoneId", async (req, res) => {
+    try {
+      const milestoneId = req.params.milestoneId;
+      const updateData = {
+        name: req.body.name,
+        description: req.body.description,
+        due_date: req.body.dueDate,
+        status: req.body.status,
+        updated_at: new Date().toISOString()
+      };
+      
+      const updatedMilestone = await db.update(milestones)
+        .set(updateData)
+        .where(eq(milestones.id, milestoneId))
+        .returning();
+      
+      if (updatedMilestone.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: "Milestone not found"
+        });
+      }
+      
+      res.json({
+        success: true,
+        data: updatedMilestone[0]
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to update milestone" 
+      });
+    }
+  });
+
+  // Milestone service - Delete milestone
+  app.delete("/api/milestone-service/projects/:projectId/milestones/:milestoneId", async (req, res) => {
+    try {
+      const milestoneId = req.params.milestoneId;
+      
+      const deletedMilestone = await db.delete(milestones)
+        .where(eq(milestones.id, milestoneId))
+        .returning();
+      
+      if (deletedMilestone.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: "Milestone not found"
+        });
+      }
+      
+      res.json({
+        success: true,
+        data: { message: "Milestone deleted successfully" }
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to delete milestone" 
       });
     }
   });
