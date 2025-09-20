@@ -414,16 +414,32 @@ class ApiClient {
   }
 
   async createMilestone(projectId: string, data: { name: string; description?: string; dueDate: string; status?: 'planning' | 'in_progress' | 'completed' | 'blocked'; }): Promise<ApiResponse<{ message: string; milestone: any }>> {
+    // Map frontend camelCase to backend snake_case
+    const payload = {
+      name: data.name,
+      description: data.description,
+      due_date: data.dueDate, // Backend expects snake_case
+      status: data.status
+    };
+    
     return this.makeRequest(`/milestone-service/projects/${projectId}/milestones`, {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: JSON.stringify(payload),
     });
   }
 
   async updateMilestone(projectId: string, milestoneId: string, data: { name?: string; description?: string; dueDate?: string; status?: 'planning' | 'in_progress' | 'completed' | 'blocked'; }): Promise<ApiResponse<{ message: string; milestone: any }>> {
+    // Map frontend camelCase to backend snake_case
+    const payload = {
+      name: data.name,
+      description: data.description,
+      due_date: data.dueDate, // Backend expects snake_case
+      status: data.status
+    };
+    
     return this.makeRequest(`/milestone-service/projects/${projectId}/milestones/${milestoneId}`, {
       method: 'PUT',
-      body: JSON.stringify(data),
+      body: JSON.stringify(payload),
     });
   }
 
@@ -656,10 +672,6 @@ class ApiClient {
     return this.makeRequest(`/workspace-service/tasks/${taskId}/history`);
   }
 
-  // Milestones
-  async getMilestones(projectId: string): Promise<ApiResponse<any[]>> {
-    return this.makeRequest(`/workspace-service/projects/${projectId}/milestones`);
-  }
 
   // Profile management
   async getProfile(userId: string): Promise<ApiResponse<any>> {
