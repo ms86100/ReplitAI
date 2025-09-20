@@ -108,25 +108,28 @@ const ProjectCompletionGauge: React.FC<ProjectCompletionGaugeProps> = ({ totalTa
   // Calculate completion percentage
   const completionPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
   
-  // Create gauge data - we'll use a simple donut chart to simulate a gauge
+  // Create gauge data for semi-circular gauge
   const gaugeData = [
-    { name: 'Completed', value: completionPercentage, fill: '#10b981' },
-    { name: 'Remaining', value: 100 - completionPercentage, fill: '#e5e7eb' }
+    { name: 'Completed', value: completionPercentage, fill: '#14b8a6' }, // Teal color
+    { name: 'Remaining', value: 100 - completionPercentage, fill: '#e5e7eb' } // Light gray
   ];
+
+  // Calculate needle rotation angle (0% = -90deg, 100% = 90deg)
+  const needleAngle = -90 + (completionPercentage * 1.8); // 1.8 = 180deg / 100%
 
   return (
     <div className="h-[200px] flex flex-col items-center justify-center">
       <div className="relative">
-        <ResponsiveContainer width={160} height={160}>
+        <ResponsiveContainer width={180} height={120}>
           <RechartsPieChart>
             <Pie
               data={gaugeData}
               cx="50%"
-              cy="50%"
-              startAngle={90}
-              endAngle={450}
+              cy="85%"
+              startAngle={-180}
+              endAngle={0}
               innerRadius={50}
-              outerRadius={70}
+              outerRadius={80}
               dataKey="value"
               stroke="none"
             >
@@ -137,21 +140,40 @@ const ProjectCompletionGauge: React.FC<ProjectCompletionGaugeProps> = ({ totalTa
           </RechartsPieChart>
         </ResponsiveContainer>
         
-        {/* Center content */}
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <Target className="h-6 w-6 text-emerald-600 mb-1" />
-          <div className="text-2xl font-bold text-emerald-700">{completionPercentage}%</div>
+        {/* Needle */}
+        <div 
+          className="absolute w-0.5 h-8 bg-orange-500 origin-bottom"
+          style={{
+            left: '50%',
+            bottom: '25%',
+            transform: `translateX(-50%) rotate(${needleAngle}deg)`,
+            transformOrigin: 'bottom center'
+          }}
+        />
+        
+        {/* Center dot */}
+        <div 
+          className="absolute w-3 h-3 bg-orange-500 rounded-full"
+          style={{
+            left: '50%',
+            bottom: '25%',
+            transform: 'translateX(-50%) translateY(50%)'
+          }}
+        />
+        
+        {/* Percentage display */}
+        <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 text-center">
+          <div className="text-2xl font-bold text-teal-700" data-testid="text-completion-percentage">
+            {completionPercentage}%
+          </div>
           <div className="text-xs text-muted-foreground">Complete</div>
         </div>
       </div>
       
       {/* Summary stats */}
-      <div className="mt-4 text-center">
+      <div className="mt-2 text-center" data-testid="text-completion-summary">
         <div className="text-sm text-muted-foreground">
           {completedTasks} of {totalTasks} tasks completed
-        </div>
-        <div className="text-xs text-muted-foreground mt-1">
-          Project Completion Status
         </div>
       </div>
     </div>
@@ -673,33 +695,6 @@ export const ProjectAnalyticsDashboard: React.FC<ProjectAnalyticsDashboardProps>
               </CardContent>
             </Card>
 
-            {/* Productivity Trend */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5" />
-                  Productivity Trend
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  {taskAnalytics.productivityTrend?.length > 0 ? (
-                    <AreaChart data={taskAnalytics.productivityTrend}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="week" />
-                      <YAxis />
-                      <Tooltip />
-                      <Area type="monotone" dataKey="completed" stackId="1" stroke="#10b981" fill="#10b981" fillOpacity={0.6} />
-                      <Area type="monotone" dataKey="created" stackId="2" stroke="#475569" fill="#475569" fillOpacity={0.6} />
-                    </AreaChart>
-                  ) : (
-                    <div className="h-[300px] flex items-center justify-center text-muted-foreground">
-                      No productivity trend data available
-                    </div>
-                  )}
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
           </div>
         </TabsContent>
 
