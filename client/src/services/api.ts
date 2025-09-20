@@ -1237,6 +1237,55 @@ class ApiClient {
     });
   }
 
+  // Portfolio Analytics APIs
+  async getPortfolioSummary(): Promise<ApiResponse<any>> {
+    const ep = this.resolveEndpoint(
+      `/analytics/portfolio/summary`,
+      `/analytics/portfolio/summary`
+    );
+    return this.makeRequest(ep, { method: 'GET' });
+  }
+
+  async getPortfolioProjects(): Promise<ApiResponse<any>> {
+    const ep = this.resolveEndpoint(
+      `/projects-service/projects`,
+      `/projects-service/projects`
+    );
+    return this.makeRequest(ep, { method: 'GET' });
+  }
+
+  async getResourceSummary(): Promise<ApiResponse<any>> {
+    const ep = this.resolveEndpoint(
+      `/analytics/resources/summary`,
+      `/analytics/resources/summary`
+    );
+    return this.makeRequest(ep, { method: 'GET' });
+  }
+
+  async getResourceUtilization(): Promise<ApiResponse<any>> {
+    const ep = this.resolveEndpoint(
+      `/analytics/resources/utilization`,
+      `/analytics/resources/utilization`
+    );
+    return this.makeRequest(ep, { method: 'GET' });
+  }
+
+  async getMyTasksSummary(): Promise<ApiResponse<any>> {
+    const ep = this.resolveEndpoint(
+      `/analytics/me/tasks/summary`,
+      `/analytics/me/tasks/summary`
+    );
+    return this.makeRequest(ep, { method: 'GET' });
+  }
+
+  async getMyTasks(): Promise<ApiResponse<any>> {
+    const ep = this.resolveEndpoint(
+      `/workspace-service/my-tasks`,
+      `/workspace-service/my-tasks`
+    );
+    return this.makeRequest(ep, { method: 'GET' });
+  }
+
   // ================== NEW ANALYTICS API METHODS ==================
   
   // Velocity Analytics - Task completion trends

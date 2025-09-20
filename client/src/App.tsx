@@ -17,6 +17,9 @@ import Retrospectives from "./pages/Retrospectives";
 import TeamCapacity from "./pages/TeamCapacity";
 import AccessControl from "./pages/AccessControl";
 import ExecutiveDashboard from "./pages/ExecutiveDashboard";
+import PortfolioDashboard from "./pages/PortfolioDashboard";
+import ResourceDashboard from "./pages/ResourceDashboard";
+import MyWork from "./pages/MyWork";
 
 const queryClient = new QueryClient();
 
@@ -38,6 +41,9 @@ const App = () => (
                 <Route path="/project/:id/edit" component={EditProject} />
                 <Route path="/projects/:projectId/dashboard" component={ExecutiveDashboard} />
                 <Route path="/project/:id/:module" component={ProjectWorkspace} />
+                <Route path="/portfolio" component={PortfolioDashboard} />
+                <Route path="/resources" component={ResourceDashboard} />
+                <Route path="/my-work" component={MyWork} />
                 <Route path="/retrospectives" component={Retrospectives} />
                 <Route path="/team-capacity" component={TeamCapacity} />
                 <Route path="/access-control" component={AccessControl} />
