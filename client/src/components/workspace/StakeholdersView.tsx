@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, UserPlus, Mail, Building } from 'lucide-react';
+import { Plus, UserPlus, Mail, Building, Edit, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { SimpleSelect, SimpleSelectItem } from '@/components/ui/simple-select';
@@ -48,6 +49,7 @@ export function StakeholdersView({ projectId }: StakeholdersViewProps) {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddingStakeholder, setIsAddingStakeholder] = useState(false);
+  const [editingStakeholder, setEditingStakeholder] = useState<Stakeholder | null>(null);
   const { toast } = useToast();
   
   const [formData, setFormData] = useState({
@@ -86,23 +88,43 @@ export function StakeholdersView({ projectId }: StakeholdersViewProps) {
     if (!user || !formData.name.trim()) return;
 
     try {
-      const response = await apiClient.createStakeholder(projectId, {
-        name: formData.name,
-        email: formData.email || undefined,
-        department: formData.department || undefined,
-        raci: formData.raci || undefined,
-        influence_level: formData.influence_level || undefined,
-        notes: formData.notes || undefined
-      });
+      if (editingStakeholder) {
+        const response = await apiClient.updateStakeholder(projectId, editingStakeholder.id, {
+          name: formData.name,
+          email: formData.email || undefined,
+          department: formData.department || undefined,
+          raci: formData.raci || undefined,
+          influence_level: formData.influence_level || undefined,
+          notes: formData.notes || undefined
+        });
 
-      if (!response.success) {
-        throw new Error(response.error || 'Failed to create stakeholder');
+        if (!response.success) {
+          throw new Error(response.error || 'Failed to update stakeholder');
+        }
+        
+        toast({
+          title: "Stakeholder updated",
+          description: "Stakeholder information has been updated successfully.",
+        });
+      } else {
+        const response = await apiClient.createStakeholder(projectId, {
+          name: formData.name,
+          email: formData.email || undefined,
+          department: formData.department || undefined,
+          raci: formData.raci || undefined,
+          influence_level: formData.influence_level || undefined,
+          notes: formData.notes || undefined
+        });
+
+        if (!response.success) {
+          throw new Error(response.error || 'Failed to create stakeholder');
+        }
+        
+        toast({
+          title: "Stakeholder added",
+          description: "New stakeholder has been added to the project.",
+        });
       }
-      
-      toast({
-        title: "Stakeholder added",
-        description: "New stakeholder has been added to the project.",
-      });
 
       resetForm();
       fetchStakeholders();
@@ -124,7 +146,44 @@ export function StakeholdersView({ projectId }: StakeholdersViewProps) {
       influence_level: '',
       notes: ''
     });
+    setEditingStakeholder(null);
     setIsAddingStakeholder(false);
+  };
+
+  const openEditDialog = (stakeholder: Stakeholder) => {
+    setFormData({
+      name: stakeholder.name,
+      email: stakeholder.email || '',
+      department: stakeholder.department || '',
+      raci: stakeholder.raci || '',
+      influence_level: stakeholder.influence_level || '',
+      notes: stakeholder.notes || ''
+    });
+    setEditingStakeholder(stakeholder);
+    setIsAddingStakeholder(true);
+  };
+
+  const handleDelete = async (stakeholderId: string) => {
+    try {
+      const response = await apiClient.deleteStakeholder(projectId, stakeholderId);
+
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to delete stakeholder');
+      }
+
+      toast({
+        title: "Stakeholder deleted",
+        description: "Stakeholder has been removed from the project.",
+      });
+
+      fetchStakeholders();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
   };
 
   const filteredStakeholders = stakeholders.filter(stakeholder =>
@@ -317,6 +376,7 @@ export function StakeholdersView({ projectId }: StakeholdersViewProps) {
                       <TableHead>RACI</TableHead>
                       <TableHead>Influence</TableHead>
                       <TableHead>Notes</TableHead>
+                      <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -378,6 +438,46 @@ export function StakeholdersView({ projectId }: StakeholdersViewProps) {
                           ) : (
                             <span className="text-muted-foreground">-</span>
                           )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => openEditDialog(stakeholder)}
+                              data-testid={`button-edit-stakeholder-${stakeholder.id}`}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  data-testid={`button-delete-stakeholder-${stakeholder.id}`}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete Stakeholder</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Are you sure you want to delete "{stakeholder.name}"? This action cannot be undone.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => handleDelete(stakeholder.id)}
+                                    className="bg-destructive hover:bg-destructive/90"
+                                  >
+                                    Delete
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}

@@ -170,7 +170,7 @@ export const TeamCapacityModule: React.FC<TeamCapacityModuleProps> = ({ projectI
     if (!iterationToDelete) return;
     
     try {
-      const response = await apiClient.deleteIteration(iterationToDelete.id);
+      const response = await apiClient.deleteCapacityIteration(projectId, iterationToDelete.id);
       if (response.success) {
         await fetchIterations(); // Refresh iterations list
         toast({ title: 'Success', description: 'Iteration deleted successfully' });
