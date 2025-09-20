@@ -25,6 +25,39 @@ const backupAnalyzer = new BackupAnalyzer();
 const databaseRestorer = new DatabaseRestorer();
 const databaseVerifier = new DatabaseVerifier();
 
+// Portfolio analytics helper functions
+const getProjectStatusDistribution = async (userId: string) => {
+  const projectStatusQuery = await db
+    .select({
+      status: projects.status,
+      count: count()
+    })
+    .from(projects)
+    .innerJoin(projectMembers, eq(projectMembers.project_id, projects.id))
+    .where(eq(projectMembers.user_id, userId))
+    .groupBy(projects.status);
+    
+  return projectStatusQuery;
+};
+
+const getResourceUtilization = async (userId: string) => {
+  const resourceQuery = await db
+    .select({
+      user_id: teamMembers.user_id,
+      total_tasks: count(tasks.id),
+      completed_tasks: sum(tasks.id).where(eq(tasks.status, 'completed')),
+      in_progress_tasks: sum(tasks.id).where(eq(tasks.status, 'in_progress'))
+    })
+    .from(teamMembers)
+    .leftJoin(teams, eq(teams.id, teamMembers.team_id))
+    .leftJoin(tasks, eq(tasks.owner_id, teamMembers.user_id))
+    .innerJoin(projectMembers, eq(projectMembers.project_id, teams.project_id))
+    .where(eq(projectMembers.user_id, userId))
+    .groupBy(teamMembers.user_id);
+    
+  return resourceQuery;
+};
+
 // Email service setup
 const createEmailTransporter = () => {
   return nodemailer.createTransport({
@@ -4479,6 +4512,229 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Budget summary error:', error);
       res.status(500).json({ success: false, error: 'Failed to fetch budget summary' });
+    }
+  });
+
+  // ================== PORTFOLIO ANALYTICS ENDPOINTS ==================
+  
+  // Portfolio Summary Analytics
+  app.get("/api/analytics/portfolio/summary", verifyToken, async (req, res) => {
+    try {
+      const userId = (req as any).user.id;
+      
+      // Get projects user has access to
+      const userProjects = await db
+        .select({ project_id: projectMembers.project_id })
+        .from(projectMembers)
+        .where(eq(projectMembers.user_id, userId));
+      
+      const projectIds = userProjects.map(p => p.project_id);
+      
+      if (projectIds.length === 0) {
+        return res.json({
+          success: true,
+          data: {
+            totalProjects: 0,
+            activeProjects: 0,
+            completedProjects: 0,
+            onHoldProjects: 0,
+            atRiskProjects: 0,
+            totalBudget: 0
+          }
+        });
+      }
+      
+      // Count projects by status
+      const statusDistribution = await getProjectStatusDistribution(userId);
+      
+      // Calculate totals
+      const totalProjects = statusDistribution.reduce((sum, item) => sum + (item.count || 0), 0);
+      const activeProjects = statusDistribution.find(s => s.status === 'in_progress')?.count || 0;
+      const completedProjects = statusDistribution.find(s => s.status === 'completed')?.count || 0;
+      const onHoldProjects = statusDistribution.find(s => s.status === 'on_hold')?.count || 0;
+      
+      // Calculate at-risk projects (projects with overdue tasks)
+      const atRiskProjects = await db
+        .select({ count: count() })
+        .from(projects)
+        .innerJoin(projectMembers, eq(projectMembers.project_id, projects.id))
+        .innerJoin(tasks, eq(tasks.project_id, projects.id))
+        .where(and(
+          eq(projectMembers.user_id, userId),
+          lte(tasks.due_date, new Date().toISOString()),
+          or(eq(tasks.status, 'pending'), eq(tasks.status, 'in_progress'))
+        ))
+        .groupBy(projects.id);
+      
+      // Estimate total budget (mock for now)
+      const totalBudget = totalProjects * 150000; // ~€150k per project average
+      
+      res.json({
+        success: true,
+        data: {
+          totalProjects,
+          activeProjects,
+          completedProjects,
+          onHoldProjects,
+          atRiskProjects: atRiskProjects.length,
+          totalBudget
+        }
+      });
+    } catch (error) {
+      console.error('Portfolio summary error:', error);
+      res.status(500).json({ success: false, error: 'Failed to fetch portfolio summary' });
+    }
+  });
+
+  // Resource Summary Analytics
+  app.get("/api/analytics/resources/summary", verifyToken, async (req, res) => {
+    try {
+      const userId = (req as any).user.id;
+      
+      // Get all team members in user's projects
+      const resources = await db
+        .select({
+          user_id: teamMembers.user_id,
+          team_id: teamMembers.team_id,
+          team_name: teams.name
+        })
+        .from(teamMembers)
+        .innerJoin(teams, eq(teams.id, teamMembers.team_id))
+        .innerJoin(projectMembers, eq(projectMembers.project_id, teams.project_id))
+        .where(eq(projectMembers.user_id, userId));
+      
+      const totalResources = resources.length;
+      
+      // Calculate resource allocation based on task assignments
+      const resourceTasks = await db
+        .select({
+          user_id: tasks.owner_id,
+          task_count: count()
+        })
+        .from(tasks)
+        .innerJoin(projectMembers, eq(projectMembers.project_id, tasks.project_id))
+        .where(eq(projectMembers.user_id, userId))
+        .groupBy(tasks.owner_id);
+      
+      const assignedResources = resourceTasks.filter(r => (r.task_count || 0) > 0).length;
+      const availableResources = Math.max(0, totalResources - assignedResources);
+      const overallocatedResources = resourceTasks.filter(r => (r.task_count || 0) > 10).length; // Mock threshold
+      
+      res.json({
+        success: true,
+        data: {
+          totalResources,
+          assignedResources,
+          availableResources,
+          overallocatedResources
+        }
+      });
+    } catch (error) {
+      console.error('Resource summary error:', error);
+      res.status(500).json({ success: false, error: 'Failed to fetch resource summary' });
+    }
+  });
+
+  // Resource Utilization Analytics
+  app.get("/api/analytics/resources/utilization", verifyToken, async (req, res) => {
+    try {
+      const userId = (req as any).user.id;
+      const utilization = await getResourceUtilization(userId);
+      
+      // Add mock names and roles for demonstration
+      const enhancedUtilization = utilization.map((resource, index) => ({
+        ...resource,
+        name: `Resource ${index + 1}`,
+        role: ['Developer', 'Designer', 'QA', 'Manager'][index % 4],
+        team: ['Engineering', 'Design', 'QA', 'DevOps'][index % 4],
+        utilization: Math.min(120, Math.max(60, 75 + Math.random() * 40)) // 60-120% range
+      }));
+      
+      res.json({
+        success: true,
+        data: enhancedUtilization
+      });
+    } catch (error) {
+      console.error('Resource utilization error:', error);
+      res.status(500).json({ success: false, error: 'Failed to fetch resource utilization' });
+    }
+  });
+
+  // My Tasks Summary Analytics
+  app.get("/api/analytics/me/tasks/summary", verifyToken, async (req, res) => {
+    try {
+      const userId = (req as any).user.id;
+      
+      // Get user's task counts by status
+      const taskCounts = await db
+        .select({
+          status: tasks.status,
+          count: count()
+        })
+        .from(tasks)
+        .where(eq(tasks.owner_id, userId))
+        .groupBy(tasks.status);
+      
+      const assignedTasks = taskCounts.reduce((sum, item) => sum + (item.count || 0), 0);
+      const completedTasks = taskCounts.find(t => t.status === 'completed')?.count || 0;
+      const inProgressTasks = taskCounts.find(t => t.status === 'in_progress')?.count || 0;
+      const pendingTasks = taskCounts.find(t => t.status === 'pending')?.count || 0;
+      
+      // Calculate at-risk tasks (overdue)
+      const atRiskTasks = await db
+        .select({ count: count() })
+        .from(tasks)
+        .where(and(
+          eq(tasks.owner_id, userId),
+          lte(tasks.due_date, new Date().toISOString()),
+          or(eq(tasks.status, 'pending'), eq(tasks.status, 'in_progress'))
+        ));
+      
+      res.json({
+        success: true,
+        data: {
+          assignedTasks,
+          completedTasks,
+          inProgressTasks,
+          pendingTasks,
+          atRiskTasks: atRiskTasks[0]?.count || 0
+        }
+      });
+    } catch (error) {
+      console.error('My tasks summary error:', error);
+      res.status(500).json({ success: false, error: 'Failed to fetch task summary' });
+    }
+  });
+
+  // My Tasks List
+  app.get("/api/workspace-service/my-tasks", verifyToken, async (req, res) => {
+    try {
+      const userId = (req as any).user.id;
+      
+      const myTasks = await db
+        .select({
+          id: tasks.id,
+          title: tasks.title,
+          status: tasks.status,
+          priority: tasks.priority,
+          due_date: tasks.due_date,
+          progress: tasks.progress,
+          project_id: tasks.project_id,
+          project_name: projects.name
+        })
+        .from(tasks)
+        .leftJoin(projects, eq(projects.id, tasks.project_id))
+        .where(eq(tasks.owner_id, userId))
+        .orderBy(desc(tasks.updated_at))
+        .limit(50);
+      
+      res.json({
+        success: true,
+        data: myTasks
+      });
+    } catch (error) {
+      console.error('My tasks error:', error);
+      res.status(500).json({ success: false, error: 'Failed to fetch my tasks' });
     }
   });
 
