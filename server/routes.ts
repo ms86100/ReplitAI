@@ -669,11 +669,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const projectTasks = await db.select().from(tasks).where(eq(tasks.project_id, projectId));
       const totalTasks = projectTasks.length;
       const completedTasks = projectTasks.filter(t => t.status === 'completed' || t.status === 'done').length;
-      const overdueTasks = projectTasks.filter(t => 
+      const overdueTasksData = projectTasks.filter(t => 
         t.due_date && new Date(t.due_date) < new Date() && 
         t.status !== 'completed' && t.status !== 'done'
-      ).length;
+      );
+      const overdueTasks = overdueTasksData.length;
       const avgCompletionTime = totalTasks > 0 ? 5.2 : 0; // Can be calculated from actual data later
+      
+      // Create overdue tasks list with detailed information
+      const overdueTasksList = overdueTasksData.map(task => {
+        const dueDate = new Date(task.due_date!);
+        const today = new Date();
+        const daysOverdue = Math.floor((today.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
+        
+        // Find task owner name
+        const owner = stakeholderData.find(s => s.id === task.owner_id);
+        
+        return {
+          id: task.id,
+          title: task.title,
+          owner: owner?.name || 'Unassigned',
+          dueDate: dueDate.toISOString().split('T')[0], // Format as YYYY-MM-DD
+          daysOverdue
+        };
+      });
 
       // Milestone analytics  
       const projectMilestones = await db.select().from(milestones).where(eq(milestones.project_id, projectId));
@@ -716,12 +735,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const teamHealth = avgCapacity;
       const overallHealth = (budgetHealth + timelineHealth + riskHealth + teamHealth) / 4;
 
-      // Task distribution by status
+      // Task distribution by status with colors
       const tasksByStatus = [
-        { status: 'todo', count: projectTasks.filter(t => t.status === 'todo').length },
-        { status: 'in_progress', count: projectTasks.filter(t => t.status === 'in_progress').length },
-        { status: 'completed', count: completedTasks },
-        { status: 'on_hold', count: projectTasks.filter(t => t.status === 'on_hold').length }
+        { status: 'todo', count: projectTasks.filter(t => t.status === 'todo').length, color: '#6b7280' },
+        { status: 'in_progress', count: projectTasks.filter(t => t.status === 'in_progress').length, color: '#3b82f6' },
+        { status: 'completed', count: completedTasks, color: '#10b981' },
+        { status: 'on_hold', count: projectTasks.filter(t => t.status === 'on_hold').length, color: '#f59e0b' }
       ];
 
       // Get stakeholders for task owner mapping
@@ -778,6 +797,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           avgCompletionTime,
           tasksByStatus,
           tasksByOwner,
+          overdueTasksList,
           productivityTrend: []
         },
         riskAnalysis: {
