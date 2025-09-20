@@ -409,21 +409,21 @@ class ApiClient {
   }
 
   async createMilestone(projectId: string, data: { name: string; description?: string; dueDate: string; status?: 'planning' | 'in_progress' | 'completed' | 'blocked'; }): Promise<ApiResponse<{ message: string; milestone: any }>> {
-    return this.makeRequest(`/roadmap-service/projects/${projectId}/roadmap`, {
+    return this.makeRequest(`/milestone-service/projects/${projectId}/milestones`, {
       method: 'POST',
       body: JSON.stringify(data),
     });
   }
 
   async updateMilestone(projectId: string, milestoneId: string, data: { name?: string; description?: string; dueDate?: string; status?: 'planning' | 'in_progress' | 'completed' | 'blocked'; }): Promise<ApiResponse<{ message: string; milestone: any }>> {
-    return this.makeRequest(`/roadmap-service/projects/${projectId}/roadmap/${milestoneId}`, {
+    return this.makeRequest(`/milestone-service/projects/${projectId}/milestones/${milestoneId}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
   }
 
   async deleteMilestone(projectId: string, milestoneId: string): Promise<ApiResponse<{ message: string }>> {
-    return this.makeRequest(`/roadmap-service/projects/${projectId}/roadmap/${milestoneId}`, {
+    return this.makeRequest(`/milestone-service/projects/${projectId}/milestones/${milestoneId}`, {
       method: 'DELETE',
     });
   }

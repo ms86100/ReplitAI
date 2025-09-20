@@ -548,6 +548,7 @@ export function StatusManagementView({ projectId }: StatusManagementViewProps) {
         <MilestoneManagementDialog
           projectId={projectId}
           onMilestoneChange={fetchData}
+          directCreate={true}
           triggerButton={
             <Button data-testid="button-add-milestone">
               <Plus className="h-4 w-4 mr-2" />

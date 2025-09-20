@@ -17,6 +17,7 @@ interface MilestoneManagementDialogProps {
   projectId: string;
   onMilestoneChange: () => void;
   triggerButton?: React.ReactNode;
+  directCreate?: boolean; // If true, opens create dialog directly
 }
 
 interface Milestone {
@@ -45,7 +46,7 @@ const statusOptions = [
   { value: 'blocked', label: 'Blocked', color: 'bg-red-500' }
 ];
 
-export function MilestoneManagementDialog({ projectId, onMilestoneChange, triggerButton }: MilestoneManagementDialogProps) {
+export function MilestoneManagementDialog({ projectId, onMilestoneChange, triggerButton, directCreate = false }: MilestoneManagementDialogProps) {
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
   const [milestones, setMilestones] = useState<Milestone[]>([]);
@@ -62,9 +63,14 @@ export function MilestoneManagementDialog({ projectId, onMilestoneChange, trigge
 
   useEffect(() => {
     if (isOpen) {
-      fetchMilestones();
+      if (directCreate) {
+        setIsCreateDialogOpen(true);
+        setIsOpen(false);
+      } else {
+        fetchMilestones();
+      }
     }
-  }, [isOpen, projectId]);
+  }, [isOpen, projectId, directCreate]);
 
   const fetchMilestones = async () => {
     try {
