@@ -242,12 +242,29 @@ const ExecutiveDashboard = () => {
   const futureTasks = tasks.tasksByStatus?.find((s: any) => s.status === 'backlog')?.count || 0;
   const onTrackTasks = tasks.tasksByStatus?.find((s: any) => s.status === 'in_progress')?.count || 0;
   const overdueTasks = tasks.overdueTasks || 0;
-  const lateTasks = 0; // Can be calculated based on due dates
+  // Calculate late tasks from task data
+  const allTasks = tasks.overdueTasksList || [];
+  const lateTasks = allTasks.filter((task: any) => {
+    if (!task.due_date) return false;
+    const dueDate = new Date(task.due_date);
+    const today = new Date();
+    return dueDate < today && task.status !== 'completed';
+  }).length;
 
-  // Calculate effort metrics (convert to thousands for display)
-  const totalEffort = Math.round((budget.totalAllocated || 0) / 1000);
-  const effortCompleted = Math.round((budget.totalSpent || 0) / 1000);
-  const effortRemaining = Math.round((budget.remainingBudget || 0) / 1000);
+  // Calculate effort metrics from task data (in hours)
+  const taskList = tasks.overdueTasksList || [];
+  const totalEffortHours = taskList.reduce((sum: number, task: any) => sum + (task.estimated_hours || 8), 0);
+  const completedEffortHours = taskList.reduce((sum: number, task: any) => {
+    const progress = task.progress || 0;
+    const estimated = task.estimated_hours || 8;
+    return sum + Math.round((progress / 100) * estimated);
+  }, 0);
+  const remainingEffortHours = totalEffortHours - completedEffortHours;
+  
+  // Convert to display format (K for thousands)
+  const totalEffort = Math.round(totalEffortHours / 1000 * 10) / 10; // 1 decimal place
+  const effortCompleted = Math.round(completedEffortHours);
+  const effortRemaining = Math.round(remainingEffortHours / 1000 * 10) / 10;
 
   // Prepare chart data
   const statusChartData = tasks.tasksByStatus?.map((item: any) => ({
@@ -264,13 +281,30 @@ const ExecutiveDashboard = () => {
     blocked: owner.blocked
   })) || [];
 
-  // Mock risk data (since not available in current system)
-  const riskHeatmapData = [
-    { name: 'Technical Risk', probability: 0.7, impact: 0.8, value: 0.56 },
-    { name: 'Budget Risk', probability: 0.3, impact: 0.9, value: 0.27 },
-    { name: 'Timeline Risk', probability: 0.6, impact: 0.7, value: 0.42 },
-    { name: 'Resource Risk', probability: 0.4, impact: 0.6, value: 0.24 }
-  ];
+  // Tasks by Project data for pie chart
+  const tasksByProjectData = tasks.tasksByStatus?.map((status: any, index: number) => ({
+    name: `Project ${index + 1}`,
+    value: status.count,
+    color: status.color
+  })) || [];
+
+  // Effort by Project data for treemap
+  const effortByProjectData = tasksByOwnerData.map((owner: any) => ({
+    name: owner.owner,
+    value: owner.total * 8, // Assuming 8 hours per task
+    size: owner.total
+  }));
+
+  // Risk data from real analytics (if available)
+  const riskData = analytics.riskAnalysis;
+  const hasRiskData = riskData && riskData.riskHeatmap && riskData.riskHeatmap.length > 0;
+  const riskHeatmapData = hasRiskData ? 
+    riskData.riskHeatmap.map((risk: any) => ({
+      name: risk.category,
+      value: risk.probability * risk.impact,
+      probability: risk.probability,
+      impact: risk.impact
+    })) : [];
 
   return (
     <DashboardLayout>
@@ -397,7 +431,7 @@ const ExecutiveDashboard = () => {
                       dataKey="value"
                     >
                       {statusChartData.map((entry: any, index: number) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
+                        <Cell key={`cell-${index}`} fill={entry.color || `#${Math.floor(Math.random()*16777215).toString(16)}`} />
                       ))}
                     </Pie>
                     <Tooltip />
@@ -407,6 +441,59 @@ const ExecutiveDashboard = () => {
               </CardContent>
             </Card>
 
+            {/* Tasks by Project > Bucket */}
+            <Card className="col-span-1">
+              <CardHeader>
+                <CardTitle className="text-lg">Tasks by Project - Bucket</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={tasksByProjectData}
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={120}
+                      paddingAngle={2}
+                      dataKey="value"
+                    >
+                      {tasksByProjectData.map((entry: any, index: number) => (
+                        <Cell key={`cell-${index}`} fill={entry.color || `#${Math.floor(Math.random()*16777215).toString(16)}`} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            {/* Effort (Hours) by Project > Bucket */}
+            <Card className="col-span-1">
+              <CardHeader>
+                <CardTitle className="text-lg">Effort (Hours) by Project - Bucket</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {effortByProjectData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <Treemap
+                      data={effortByProjectData}
+                      dataKey="value"
+                      stroke="#fff"
+                      fill="#3b82f6"
+                    />
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex items-center justify-center h-[300px] text-muted-foreground">
+                    No effort data available
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Second Charts Row */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Tasks by Owner */}
             <Card className="col-span-1">
               <CardHeader>
@@ -432,14 +519,20 @@ const ExecutiveDashboard = () => {
                 <CardTitle className="text-lg">Risk Heatmap</CardTitle>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <Treemap
-                    data={riskHeatmapData}
-                    dataKey="value"
-                    stroke="#fff"
-                    fill="#ef4444"
-                  />
-                </ResponsiveContainer>
+                {hasRiskData ? (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <Treemap
+                      data={riskHeatmapData}
+                      dataKey="value"
+                      stroke="#fff"
+                      fill="#ef4444"
+                    />
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex items-center justify-center h-[300px] text-muted-foreground">
+                    No risk data available - Risk analysis not configured for this project
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -471,10 +564,17 @@ const ExecutiveDashboard = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {tasks.overdueTasksList?.map((task: any, index: number) => (
+                    {/* Show all tasks, not just overdue */}
+                    {allTasks?.slice(0, 10).map((task: any, index: number) => (
                       <TableRow key={task.id || index}>
                         <TableCell>
-                          <div className="w-3 h-3 bg-red-500 rotate-45"></div>
+                          <div className={`w-3 h-3 rotate-45 ${
+                            task.due_date && new Date(task.due_date) < new Date() && task.status !== 'completed' 
+                              ? 'bg-red-500' 
+                              : task.status === 'completed' 
+                                ? 'bg-green-500' 
+                                : 'bg-blue-500'
+                          }`}></div>
                         </TableCell>
                         <TableCell className="font-medium">{task.title}</TableCell>
                         <TableCell>{task.project_name || 'Current Project'}</TableCell>
