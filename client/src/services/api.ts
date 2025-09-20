@@ -403,9 +403,14 @@ class ApiClient {
   }>> {
     return this.makeRequest('/retro-service/stats', { method: 'GET' });
   }
-  // Roadmap Service Methods
+  // Roadmap Service Methods  
   async getRoadmap(projectId: string): Promise<ApiResponse<{ projectId: string; milestones: any[] }>> {
     return this.makeRequest(`/roadmap-service/projects/${projectId}/roadmap`, { method: 'GET' });
+  }
+
+  // Milestone Service Methods - Get milestones (consistent endpoint)
+  async getMilestones(projectId: string): Promise<ApiResponse<{ milestones: any[] }>> {
+    return this.makeRequest(`/workspace-service/projects/${projectId}/milestones`, { method: 'GET' });
   }
 
   async createMilestone(projectId: string, data: { name: string; description?: string; dueDate: string; status?: 'planning' | 'in_progress' | 'completed' | 'blocked'; }): Promise<ApiResponse<{ message: string; milestone: any }>> {

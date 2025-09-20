@@ -75,9 +75,9 @@ export function MilestoneManagementDialog({ projectId, onMilestoneChange, trigge
   const fetchMilestones = async () => {
     try {
       setLoading(true);
-      const response = await apiClient.getRoadmap(projectId);
-      if (response.success && response.data?.milestones) {
-        setMilestones(response.data.milestones);
+      const response = await apiClient.getMilestones(projectId);
+      if (response.success && response.data) {
+        setMilestones(Array.isArray(response.data) ? response.data : response.data.milestones || []);
       }
     } catch (error) {
       console.error('Error fetching milestones:', error);

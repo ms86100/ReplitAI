@@ -110,12 +110,12 @@ export function TaskBacklog({ projectId }: TaskBacklogProps) {
 
   const fetchMilestones = async () => {
     try {
-      const response = await apiClient.getRoadmap(projectId);
+      const response = await apiClient.getMilestones(projectId);
       if (!response.success) {
         throw new Error(response.error || 'Failed to fetch milestones');
       }
-      // Extract milestones from roadmap response
-      setMilestones(response.data.milestones || []);
+      // Extract milestones from response
+      setMilestones(Array.isArray(response.data) ? response.data : response.data.milestones || []);
     } catch (error) {
       console.error('Error fetching milestones:', error);
     }
