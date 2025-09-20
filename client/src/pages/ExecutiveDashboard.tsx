@@ -73,6 +73,12 @@ const ExecutiveDashboard = () => {
     enabled: !!projectId
   });
 
+  // Fetch all tasks for complete task table
+  const { data: allTasksData } = useQuery({
+    queryKey: ['/api/workspace-service/projects', projectId, 'tasks'],
+    enabled: !!projectId
+  });
+
   // Send reminder function
   const sendReminder = async (taskId: string) => {
     setSendingReminder(taskId);
@@ -241,12 +247,6 @@ const ExecutiveDashboard = () => {
   const completedTasks = tasks.completedTasks || 0;
   const overdueTasks = tasks.overdueTasks || 0;
   const allTasks = tasks.overdueTasksList || [];
-  
-  // Fetch all tasks for complete task table
-  const { data: allTasksData } = useQuery({
-    queryKey: ['/api/workspace-service/projects', projectId, 'tasks'],
-    enabled: !!projectId
-  });
   
   // Calculate derived metrics
   const futureTasks = Math.max(0, totalTasks - completedTasks - overdueTasks);
