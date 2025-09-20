@@ -447,17 +447,39 @@ const ExecutiveDashboard = () => {
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={[
-                    { priority: 'Critical', count: ((allTasksData as any)?.data || allTasks).filter((t: any) => t.priority === 'critical').length, fill: '#ef4444' },
-                    { priority: 'High', count: ((allTasksData as any)?.data || allTasks).filter((t: any) => t.priority === 'high').length, fill: '#f97316' },
-                    { priority: 'Medium', count: ((allTasksData as any)?.data || allTasks).filter((t: any) => t.priority === 'medium').length, fill: '#eab308' },
-                    { priority: 'Low', count: ((allTasksData as any)?.data || allTasks).filter((t: any) => t.priority === 'low').length, fill: '#22c55e' }
-                  ]}>
+                  <BarChart data={(() => {
+                    // Use consistent data source - prioritize allTasksData over fallback
+                    const taskData = (allTasksData as any)?.data || allTasks || [];
+                    
+                    // Calculate priority counts with case-insensitive matching
+                    const priorityCounts = {
+                      critical: taskData.filter((t: any) => t.priority?.toLowerCase() === 'critical').length,
+                      high: taskData.filter((t: any) => t.priority?.toLowerCase() === 'high').length,
+                      medium: taskData.filter((t: any) => t.priority?.toLowerCase() === 'medium').length,
+                      low: taskData.filter((t: any) => t.priority?.toLowerCase() === 'low').length
+                    };
+                    
+                    return [
+                      { priority: 'Critical', count: priorityCounts.critical, fill: '#ef4444' },
+                      { priority: 'High', count: priorityCounts.high, fill: '#f97316' },
+                      { priority: 'Medium', count: priorityCounts.medium, fill: '#eab308' },
+                      { priority: 'Low', count: priorityCounts.low, fill: '#22c55e' }
+                    ];
+                  })()}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="priority" />
-                    <YAxis />
+                    <YAxis allowDecimals={false} />
                     <Tooltip />
-                    <Bar dataKey="count" />
+                    <Bar dataKey="count">
+                      {[
+                        { priority: 'Critical', count: 0, fill: '#ef4444' },
+                        { priority: 'High', count: 0, fill: '#f97316' },
+                        { priority: 'Medium', count: 0, fill: '#eab308' },
+                        { priority: 'Low', count: 0, fill: '#22c55e' }
+                      ].map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.fill} />
+                      ))}
+                    </Bar>
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -604,15 +626,107 @@ const ExecutiveDashboard = () => {
             </CardContent>
           </Card>
 
-          {/* Risks Table */}
+          {/* Risk Heatmap */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <AlertTriangle className="h-5 w-5" />
-                Risk Register
+                Risk Heatmap - Impact vs Probability
               </CardTitle>
             </CardHeader>
             <CardContent>
+              <div className="grid grid-cols-4 gap-4 mb-6">
+                {/* Risk Summary KPIs */}
+                <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg">
+                  <div className="text-2xl font-bold text-blue-600">
+                    {analytics.riskAnalysis?.risks?.length || 0}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Total Risks</div>
+                </div>
+                <div className="bg-red-50 dark:bg-red-950 p-4 rounded-lg">
+                  <div className="text-2xl font-bold text-red-600">
+                    {analytics.riskAnalysis?.risks?.filter((r: any) => ((r.impact || 0) * (r.probability || 0)) >= 0.6).length || 0}
+                  </div>
+                  <div className="text-sm text-muted-foreground">High Risk</div>
+                </div>
+                <div className="bg-orange-50 dark:bg-orange-950 p-4 rounded-lg">
+                  <div className="text-2xl font-bold text-orange-600">
+                    {analytics.riskAnalysis?.risks?.filter((r: any) => {
+                      const score = (r.impact || 0) * (r.probability || 0);
+                      return score >= 0.3 && score < 0.6;
+                    }).length || 0}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Medium Risk</div>
+                </div>
+                <div className="bg-green-50 dark:bg-green-950 p-4 rounded-lg">
+                  <div className="text-2xl font-bold text-green-600">
+                    {analytics.riskAnalysis?.risks?.filter((r: any) => ((r.impact || 0) * (r.probability || 0)) < 0.3).length || 0}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Low Risk</div>
+                </div>
+              </div>
+              
+              {/* 5x5 Risk Heatmap Grid */}
+              <div className="mb-6">
+                <div className="grid grid-cols-6 gap-1 text-sm">
+                  <div></div>
+                  <div className="text-center font-medium">Low</div>
+                  <div className="text-center font-medium">Med-Low</div>
+                  <div className="text-center font-medium">Medium</div>
+                  <div className="text-center font-medium">Med-High</div>
+                  <div className="text-center font-medium">High</div>
+                  
+                  {['High', 'Med-High', 'Medium', 'Med-Low', 'Low'].map((impactLevel, impactIndex) => {
+                    const impactValue = (4 - impactIndex + 1) * 0.2;
+                    return (
+                      <React.Fragment key={impactLevel}>
+                        <div className="flex items-center justify-center font-medium text-xs">{impactLevel}</div>
+                        {['Low', 'Med-Low', 'Medium', 'Med-High', 'High'].map((probLevel, probIndex) => {
+                          const probValue = (probIndex + 1) * 0.2;
+                          const riskScore = impactValue * probValue;
+                          const risksInCell = analytics.riskAnalysis?.risks?.filter((r: any) => {
+                            const rImpact = Math.round((r.impact || 0) * 5) / 5;
+                            const rProb = Math.round((r.probability || 0) * 5) / 5;
+                            return Math.abs(rImpact - impactValue) < 0.1 && Math.abs(rProb - probValue) < 0.1;
+                          }) || [];
+                          const cellColor = riskScore >= 0.6 ? 'bg-red-500' : 
+                                           riskScore >= 0.3 ? 'bg-orange-400' : 'bg-green-400';
+                          
+                          return (
+                            <div 
+                              key={`${impactLevel}-${probLevel}`}
+                              className={`h-12 w-12 ${cellColor} rounded border flex items-center justify-center text-white font-bold cursor-pointer hover:opacity-80`}
+                              title={`Impact: ${impactLevel}, Probability: ${probLevel}\nRisks: ${risksInCell.length}\n${risksInCell.map((r: any) => r.title).join(', ')}`}
+                            >
+                              {risksInCell.length}
+                            </div>
+                          );
+                        })}
+                      </React.Fragment>
+                    );
+                  })}
+                </div>
+                <div className="flex justify-center items-center mt-4 gap-4 text-sm">
+                  <span className="text-muted-foreground">Probability →</span>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-green-400 rounded"></div>
+                    <span>Low Risk</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-orange-400 rounded"></div>
+                    <span>Medium Risk</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-red-500 rounded"></div>
+                    <span>High Risk</span>
+                  </div>
+                </div>
+                <div className="text-center text-sm text-muted-foreground mt-2">
+                  ↑ Impact
+                </div>
+              </div>
+
+              {/* Risk Register Table */}
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
@@ -622,60 +736,70 @@ const ExecutiveDashboard = () => {
                       <TableHead>Probability</TableHead>
                       <TableHead>Impact</TableHead>
                       <TableHead>Risk Score</TableHead>
+                      <TableHead>Severity</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Mitigation</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {analytics.riskAnalysis?.risks?.length > 0 ? (
-                      analytics.riskAnalysis.risks.map((risk: any, index: number) => (
-                        <TableRow key={risk.id || index}>
-                          <TableCell className="font-medium">{risk.title}</TableCell>
-                          <TableCell>{risk.category}</TableCell>
-                          <TableCell>
-                            <div className="flex items-center">
-                              <div className={`w-3 h-3 rounded-full mr-2 ${
-                                (risk.probability || 0) >= 0.7 ? 'bg-red-500' :
-                                (risk.probability || 0) >= 0.4 ? 'bg-yellow-500' :
-                                'bg-green-500'
-                              }`}></div>
-                              {Math.round((risk.probability || 0) * 100)}%
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center">
-                              <div className={`w-3 h-3 rounded-full mr-2 ${
-                                (risk.impact || 0) >= 0.7 ? 'bg-red-500' :
-                                (risk.impact || 0) >= 0.4 ? 'bg-yellow-500' :
-                                'bg-green-500'
-                              }`}></div>
-                              {Math.round((risk.impact || 0) * 100)}%
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <span className={`px-2 py-1 rounded text-sm ${
-                              (risk.probability || 0) * (risk.impact || 0) >= 0.6 ? 'bg-red-100 text-red-800' :
-                              (risk.probability || 0) * (risk.impact || 0) >= 0.3 ? 'bg-yellow-100 text-yellow-800' :
-                              'bg-green-100 text-green-800'
-                            }`}>
-                              {Math.round((risk.probability || 0) * (risk.impact || 0) * 100)}
-                            </span>
-                          </TableCell>
-                          <TableCell>
-                            <span className={`px-2 py-1 rounded text-sm ${
-                              risk.status === 'closed' ? 'bg-green-100 text-green-800' :
-                              risk.status === 'mitigated' ? 'bg-blue-100 text-blue-800' :
-                              'bg-red-100 text-red-800'
-                            }`}>
-                              {risk.status?.toUpperCase()}
-                            </span>
-                          </TableCell>
-                          <TableCell className="max-w-xs truncate">{risk.mitigation_plan || 'N/A'}</TableCell>
-                        </TableRow>
-                      ))
+                      analytics.riskAnalysis.risks.map((risk: any, index: number) => {
+                        const riskScore = (risk.probability || 0) * (risk.impact || 0);
+                        const severity = riskScore >= 0.6 ? 'high' : riskScore >= 0.3 ? 'medium' : 'low';
+                        return (
+                          <TableRow key={risk.id || index}>
+                            <TableCell className="font-medium">{risk.title}</TableCell>
+                            <TableCell>{risk.category}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <div className={`w-3 h-3 rounded-full mr-2 ${
+                                  (risk.probability || 0) >= 0.7 ? 'bg-red-500' :
+                                  (risk.probability || 0) >= 0.4 ? 'bg-yellow-500' :
+                                  'bg-green-500'
+                                }`}></div>
+                                {Math.round((risk.probability || 0) * 100)}%
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <div className={`w-3 h-3 rounded-full mr-2 ${
+                                  (risk.impact || 0) >= 0.7 ? 'bg-red-500' :
+                                  (risk.impact || 0) >= 0.4 ? 'bg-yellow-500' :
+                                  'bg-green-500'
+                                }`}></div>
+                                {Math.round((risk.impact || 0) * 100)}%
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <span className={`px-2 py-1 rounded text-sm font-bold ${
+                                severity === 'high' ? 'bg-red-100 text-red-800' :
+                                severity === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                                'bg-green-100 text-green-800'
+                              }`}>
+                                {Math.round(riskScore * 100)}
+                              </span>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant={severity === 'high' ? 'destructive' : severity === 'medium' ? 'secondary' : 'outline'}>
+                                {severity}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <span className={`px-2 py-1 rounded text-sm ${
+                                risk.status === 'closed' ? 'bg-green-100 text-green-800' :
+                                risk.status === 'mitigated' ? 'bg-blue-100 text-blue-800' :
+                                'bg-red-100 text-red-800'
+                              }`}>
+                                {risk.status?.toUpperCase()}
+                              </span>
+                            </TableCell>
+                            <TableCell className="max-w-xs truncate">{risk.mitigation_plan || 'N/A'}</TableCell>
+                          </TableRow>
+                        );
+                      })
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                        <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                           No risks registered for this project
                         </TableCell>
                       </TableRow>
@@ -686,12 +810,12 @@ const ExecutiveDashboard = () => {
             </CardContent>
           </Card>
 
-          {/* Detailed Task Table */}
+          {/* Overdue Tasks Table */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <ClipboardList className="h-5 w-5" />
-                Task Details
+                <AlertTriangle className="h-5 w-5 text-red-500" />
+                Overdue Tasks
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -702,64 +826,74 @@ const ExecutiveDashboard = () => {
                       <TableHead className="w-12">KPI</TableHead>
                       <TableHead>Task</TableHead>
                       <TableHead>Project</TableHead>
-                      <TableHead>Link</TableHead>
-                      <TableHead>Start</TableHead>
-                      <TableHead>Finish</TableHead>
+                      <TableHead>Priority</TableHead>
+                      <TableHead>Owner</TableHead>
+                      <TableHead>Due Date</TableHead>
+                      <TableHead>Days Overdue</TableHead>
                       <TableHead>Progress</TableHead>
-                      <TableHead>Effort (Hours)</TableHead>
-                      <TableHead>Effort Completed (Hours)</TableHead>
-                      <TableHead>Effort Remaining (Hours)</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {/* Show all project tasks */}
-                    {((allTasksData as any)?.data || allTasks)?.slice(0, 10).map((task: any, index: number) => (
-                      <TableRow key={task.id || index}>
-                        <TableCell>
-                          <div className={`w-3 h-3 rotate-45 ${
-                            task.due_date && new Date(task.due_date) < new Date() && task.status !== 'completed' 
-                              ? 'bg-red-500' 
-                              : task.status === 'completed' 
-                                ? 'bg-green-500' 
-                                : 'bg-blue-500'
-                          }`}></div>
-                        </TableCell>
-                        <TableCell className="font-medium">{task.title}</TableCell>
-                        <TableCell>{task.project_name || 'Current Project'}</TableCell>
-                        <TableCell>
-                          <Button variant="ghost" size="sm" data-testid={`link-task-${task.id}`}>
-                            🔗
-                          </Button>
-                        </TableCell>
-                        <TableCell>{task.start_date ? new Date(task.start_date).toLocaleDateString() : '-'}</TableCell>
-                        <TableCell>{task.due_date ? new Date(task.due_date).toLocaleDateString() : '-'}</TableCell>
-                        <TableCell>
-                          <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div 
-                              className="bg-blue-600 h-2 rounded-full" 
-                              style={{ width: `${task.progress || 0}%` }}
-                            ></div>
-                          </div>
-                          <span className="text-xs text-muted-foreground">{task.progress || 0}%</span>
-                        </TableCell>
-                        <TableCell>{task.estimated_hours || 8}</TableCell>
-                        <TableCell>{Math.round((task.progress || 0) * (task.estimated_hours || 8) / 100)}</TableCell>
-                        <TableCell>{(task.estimated_hours || 8) - Math.round((task.progress || 0) * (task.estimated_hours || 8) / 100)}</TableCell>
-                        <TableCell>
-                          <Button 
-                            onClick={() => sendReminder(task.id)}
-                            disabled={sendingReminder === task.id}
-                            size="sm"
-                            variant="outline"
-                            data-testid={`button-send-reminder-${task.id}`}
-                          >
-                            <Send className="h-3 w-3 mr-1" />
-                            {sendingReminder === task.id ? 'Sending...' : 'Remind'}
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {/* Show only overdue tasks */}
+                    {(() => {
+                      const taskData = (allTasksData as any)?.data || allTasks || [];
+                      const overdueTasks = taskData.filter((task: any) => 
+                        task.due_date && 
+                        new Date(task.due_date) < new Date() && 
+                        task.status?.toLowerCase() !== 'completed'
+                      );
+                      
+                      return overdueTasks.slice(0, 10).map((task: any, index: number) => {
+                        const daysOverdue = task.due_date ? Math.floor((new Date().getTime() - new Date(task.due_date).getTime()) / (1000 * 60 * 60 * 24)) : 0;
+                        return (
+                        <TableRow key={task.id || index}>
+                          <TableCell>
+                            <div className="w-3 h-3 rotate-45 bg-red-500"></div>
+                          </TableCell>
+                          <TableCell className="font-medium">{task.title}</TableCell>
+                          <TableCell>{task.project_name || 'Current Project'}</TableCell>
+                          <TableCell>
+                            <Badge variant={
+                              task.priority?.toLowerCase() === 'critical' ? 'destructive' :
+                              task.priority?.toLowerCase() === 'high' ? 'secondary' :
+                              'outline'
+                            }>
+                              {task.priority || 'Medium'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{task.owner_name || task.created_by || '-'}</TableCell>
+                          <TableCell className="text-red-600 font-medium">
+                            {task.due_date ? new Date(task.due_date).toLocaleDateString() : '-'}
+                          </TableCell>
+                          <TableCell className="text-red-600 font-bold">
+                            {daysOverdue > 0 ? `${daysOverdue} days` : '0 days'}
+                          </TableCell>
+                          <TableCell>
+                            <div className="w-full bg-gray-200 rounded-full h-2">
+                              <div 
+                                className="bg-red-500 h-2 rounded-full" 
+                                style={{ width: `${task.progress || 0}%` }}
+                              ></div>
+                            </div>
+                            <span className="text-xs text-muted-foreground">{task.progress || 0}%</span>
+                          </TableCell>
+                          <TableCell>
+                            <Button 
+                              onClick={() => sendReminder(task.id)}
+                              disabled={sendingReminder === task.id}
+                              size="sm"
+                              variant="outline"
+                              data-testid={`button-send-reminder-${task.id}`}
+                            >
+                              <Send className="h-3 w-3 mr-1" />
+                              {sendingReminder === task.id ? 'Sending...' : 'Remind'}
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                        );
+                      });
+                    })()}
                   </TableBody>
                 </Table>
               </div>

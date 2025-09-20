@@ -1,0 +1,211 @@
+1. Bug Fixes / Issues to Resolve
+Tasks by Priority (Bug)
+
+Issue: Even though data exists in the table for Critical, High, Medium, Low, the graph is not showing values.
+
+Fix:
+
+Ensure the graph is bound to the same dataset as the table.
+
+Add validation to check if data retrieval or filtering is failing.
+
+Handle cases where values = 0 (graph should still display categories with 0).
+
+Risk Heatmap (Improvement)
+
+Issue: Current risk heatmap is not explanatory enough.
+
+Enhancement:
+
+Categorize risks into:
+
+Total Risks (count)
+
+High Priority Risks (count + list)
+
+Medium Priority Risks
+
+Low Priority Risks
+
+Visuals:
+
+Heatmap grid with Impact vs Probability.
+
+Color coding: Red (High), Orange (Medium), Green (Low).
+
+Tooltip or drilldown → show details of each risk.
+
+Tasks Inside Milestones
+
+Issue: Tasks linked to a milestone are not displayed in milestone dashboards.
+
+Fix:
+
+Update queries to fetch tasks associated with milestones.
+
+Show in both tabular view and graph view under milestones.
+
+Graph: bar chart or stacked progress indicator per milestone.
+
+Task Details → Rename + Overdue Filter
+
+Requirement:
+
+Rename “Task Details” section → “Overdue Tasks”.
+
+Only display tasks where Due Date < Today and Status ≠ Completed.
+
+Apply this in table and charts.
+
+Charts should show overdue tasks by project, priority, and owner.
+
+2. Portfolio Dashboard Requirements (Modules)
+1. Portfolio Dashboard
+
+Summary View of All Projects
+
+Metrics:
+
+Total Projects
+
+Projects in Progress
+
+Completed Projects
+
+At Risk Projects
+
+On Hold Projects
+
+Visuals:
+
+Pie chart → project status distribution.
+
+Bar chart → project progress by type.
+
+Donut chart → project distribution across categories.
+
+Project list (tabular): status, % complete, manager, start/finish dates.
+
+Timeline Gantt → project-level visualization.
+
+2. Portfolio Timeline
+
+Timeline view across all projects.
+
+Shows start and finish dates, % progress.
+
+Includes milestones + dependencies (Gantt).
+
+3. Portfolio Milestones
+
+Overview of milestones across projects.
+
+Metrics:
+
+Completed Milestones
+
+Upcoming Milestones
+
+Visuals:
+
+Donut chart → milestone distribution (Completed, In Progress, At Risk, Not Started).
+
+Table: project, milestone, due date, status.
+
+4. Resource Dashboard
+
+Metrics:
+
+Total Resources
+
+Assigned Resources
+
+Available Resources
+
+Overallocated Resources
+
+Visuals:
+
+Pie chart → resource allocation.
+
+Bar chart → effort completed by resource.
+
+Heatmap → utilization (color-coded blocks).
+
+Resource workload charts.
+
+5. Resource Assignments
+
+Metrics:
+
+Total Tasks
+
+Completed Tasks
+
+In Progress Tasks
+
+Pending Tasks
+
+Visuals:
+
+Pie chart → tasks by status.
+
+Bar chart → tasks completed per resource.
+
+Table → resource-wise task assignments.
+
+6. Task Overview
+
+Metrics:
+
+Total Tasks
+
+Completed Tasks
+
+In Progress Tasks
+
+At Risk Tasks
+
+Visuals:
+
+Pie chart → task status.
+
+Donut chart → tasks by category/type.
+
+Heatmap → task distribution.
+
+Table: task details with status, priority, project, owner.
+
+7. Project Timeline
+
+Per-project Gantt chart.
+
+Shows start, finish, task dependencies, progress.
+
+8. My Work
+
+Personalized dashboard per user.
+
+Metrics:
+
+Assigned Tasks
+
+Completed Tasks
+
+Pending Tasks
+
+At Risk Tasks
+
+Visuals:
+
+Pie chart → personal task status.
+
+Donut chart → tasks grouped by project/category.
+
+Table → user’s task list with deadlines, owners, priority.
+
+9. My Timeline
+
+Gantt chart of user’s workload.
+
+Shows dependencies, due dates, task progress.
