@@ -4159,6 +4159,297 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ================== NEW ANALYTICS APIS ==================
+  
+  // 1. Velocity Analytics - Task completion trends
+  app.get("/api/analytics/velocity", verifyToken, async (req, res) => {
+    try {
+      const { projectId, from, to } = req.query;
+      const fromDate = from ? new Date(from as string) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      const toDate = to ? new Date(to as string) : new Date();
+      
+      const velocityData = await db.select({
+        date: sql<string>`DATE(${tasks.completed_at})`,
+        completed: sql<number>`COUNT(*)`,
+        story_points: sql<number>`COALESCE(SUM(CAST(${tasks.story_points} AS INTEGER)), 0)`
+      })
+        .from(tasks)
+        .where(and(
+          eq(tasks.project_id, projectId as string),
+          eq(tasks.status, 'done'),
+          gte(tasks.completed_at, fromDate.toISOString()),
+          lte(tasks.completed_at, toDate.toISOString())
+        ))
+        .groupBy(sql`DATE(${tasks.completed_at})`)
+        .orderBy(sql`DATE(${tasks.completed_at})`);
+      
+      res.json({ success: true, data: velocityData });
+    } catch (error) {
+      console.error('Velocity analytics error:', error);
+      res.status(500).json({ success: false, error: 'Failed to fetch velocity data' });
+    }
+  });
+
+  // 2. Lead Time Metrics - Delivery performance tracking
+  app.get("/api/analytics/lead-time", verifyToken, async (req, res) => {
+    try {
+      const { projectId, from, to } = req.query;
+      const fromDate = from ? new Date(from as string) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      const toDate = to ? new Date(to as string) : new Date();
+      
+      const leadTimeData = await db.select({
+        task_id: tasks.id,
+        title: tasks.title,
+        created_at: tasks.created_at,
+        completed_at: tasks.completed_at,
+        lead_time_hours: sql<number>`EXTRACT(EPOCH FROM (${tasks.completed_at} - ${tasks.created_at})) / 3600`
+      })
+        .from(tasks)
+        .where(and(
+          eq(tasks.project_id, projectId as string),
+          eq(tasks.status, 'done'),
+          gte(tasks.completed_at, fromDate.toISOString()),
+          lte(tasks.completed_at, toDate.toISOString())
+        ))
+        .orderBy(tasks.completed_at);
+      
+      // Calculate percentiles
+      const leadTimes = leadTimeData.map(t => t.lead_time_hours).sort((a, b) => a - b);
+      const p50 = leadTimes[Math.floor(leadTimes.length * 0.5)] || 0;
+      const p85 = leadTimes[Math.floor(leadTimes.length * 0.85)] || 0;
+      
+      res.json({ 
+        success: true, 
+        data: { 
+          tasks: leadTimeData, 
+          metrics: { p50, p85, average: leadTimes.reduce((a, b) => a + b, 0) / leadTimes.length || 0 }
+        }
+      });
+    } catch (error) {
+      console.error('Lead time analytics error:', error);
+      res.status(500).json({ success: false, error: 'Failed to fetch lead time data' });
+    }
+  });
+
+  // 3. Aging Work Analysis - Identify bottlenecks
+  app.get("/api/analytics/aging-work", verifyToken, async (req, res) => {
+    try {
+      const { projectId } = req.query;
+      const now = new Date();
+      
+      const agingData = await db.select({
+        task_id: tasks.id,
+        title: tasks.title,
+        status: tasks.status,
+        created_at: tasks.created_at,
+        due_date: tasks.due_date,
+        age_days: sql<number>`EXTRACT(EPOCH FROM (NOW() - ${tasks.created_at})) / 86400`,
+        owner: stakeholders.name
+      })
+        .from(tasks)
+        .leftJoin(stakeholders, eq(tasks.owner_id, stakeholders.id))
+        .where(and(
+          eq(tasks.project_id, projectId as string),
+          ne(tasks.status, 'done')
+        ))
+        .orderBy(desc(sql`EXTRACT(EPOCH FROM (NOW() - ${tasks.created_at})) / 86400`));
+      
+      // Group by age buckets
+      const buckets = {
+        fresh: agingData.filter(t => t.age_days <= 3).length,
+        moderate: agingData.filter(t => t.age_days > 3 && t.age_days <= 7).length,
+        aging: agingData.filter(t => t.age_days > 7 && t.age_days <= 14).length,
+        stale: agingData.filter(t => t.age_days > 14).length
+      };
+      
+      res.json({ success: true, data: { tasks: agingData, buckets } });
+    } catch (error) {
+      console.error('Aging work analytics error:', error);
+      res.status(500).json({ success: false, error: 'Failed to fetch aging work data' });
+    }
+  });
+
+  // 4. Forecast Engine - Predict completion dates
+  app.get("/api/analytics/forecast", verifyToken, async (req, res) => {
+    try {
+      const { projectId } = req.query;
+      
+      // Get project data
+      const project = await db.select().from(projects).where(eq(projects.id, projectId as string)).limit(1);
+      if (!project.length) {
+        return res.status(404).json({ success: false, error: 'Project not found' });
+      }
+      
+      // Get velocity data (last 4 weeks)
+      const fourWeeksAgo = new Date(Date.now() - 28 * 24 * 60 * 60 * 1000);
+      const recentVelocity = await db.select({
+        week: sql<string>`DATE_TRUNC('week', ${tasks.completed_at})`,
+        completed: sql<number>`COUNT(*)`
+      })
+        .from(tasks)
+        .where(and(
+          eq(tasks.project_id, projectId as string),
+          eq(tasks.status, 'done'),
+          gte(tasks.completed_at, fourWeeksAgo.toISOString())
+        ))
+        .groupBy(sql`DATE_TRUNC('week', ${tasks.completed_at})`);
+      
+      const avgVelocity = recentVelocity.length > 0 
+        ? recentVelocity.reduce((sum, week) => sum + week.completed, 0) / recentVelocity.length 
+        : 0;
+      
+      // Get remaining work
+      const remainingTasks = await db.select({
+        count: sql<number>`COUNT(*)`
+      })
+        .from(tasks)
+        .where(and(
+          eq(tasks.project_id, projectId as string),
+          ne(tasks.status, 'done')
+        ));
+      
+      const remaining = remainingTasks[0]?.count || 0;
+      const weeksToComplete = avgVelocity > 0 ? Math.ceil(remaining / avgVelocity) : null;
+      const estimatedCompletion = weeksToComplete ? new Date(Date.now() + weeksToComplete * 7 * 24 * 60 * 60 * 1000) : null;
+      
+      res.json({ 
+        success: true, 
+        data: { 
+          avgVelocity, 
+          remainingTasks: remaining, 
+          weeksToComplete, 
+          estimatedCompletion,
+          confidence: recentVelocity.length >= 3 ? 'High' : recentVelocity.length >= 2 ? 'Medium' : 'Low'
+        }
+      });
+    } catch (error) {
+      console.error('Forecast analytics error:', error);
+      res.status(500).json({ success: false, error: 'Failed to generate forecast' });
+    }
+  });
+
+  // 5. Team Focus Metrics - Planned vs unplanned work
+  app.get("/api/analytics/team-focus", verifyToken, async (req, res) => {
+    try {
+      const { projectId } = req.query;
+      const lastWeek = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      
+      const focusData = await db.select({
+        owner_id: tasks.owner_id,
+        owner_name: stakeholders.name,
+        planned: sql<number>`COUNT(CASE WHEN ${tasks.priority} IN ('high', 'medium') THEN 1 END)`,
+        unplanned: sql<number>`COUNT(CASE WHEN ${tasks.priority} = 'low' OR ${tasks.priority} IS NULL THEN 1 END)`,
+        total: sql<number>`COUNT(*)`
+      })
+        .from(tasks)
+        .leftJoin(stakeholders, eq(tasks.owner_id, stakeholders.id))
+        .where(and(
+          eq(tasks.project_id, projectId as string),
+          gte(tasks.created_at, lastWeek.toISOString())
+        ))
+        .groupBy(tasks.owner_id, stakeholders.name)
+        .having(sql`COUNT(*) > 0`);
+      
+      const teamFocus = focusData.map(member => ({
+        ...member,
+        focus_ratio: member.total > 0 ? (member.planned / member.total) * 100 : 0
+      }));
+      
+      res.json({ success: true, data: teamFocus });
+    } catch (error) {
+      console.error('Team focus analytics error:', error);
+      res.status(500).json({ success: false, error: 'Failed to fetch team focus data' });
+    }
+  });
+
+  // 6. Jira Sync Health - Integration status
+  app.get("/api/jira/sync-health", verifyToken, async (req, res) => {
+    try {
+      const { projectId } = req.query;
+      
+      // Get sync status and recent errors
+      const syncTasks = await db.select({
+        id: tasks.id,
+        title: tasks.title,
+        jira_issue_key: tasks.jira_issue_key,
+        last_synced: tasks.updated_at,
+        sync_status: sql<string>`CASE WHEN ${tasks.jira_issue_key} IS NOT NULL THEN 'synced' ELSE 'not_synced' END`
+      })
+        .from(tasks)
+        .where(eq(tasks.project_id, projectId as string));
+      
+      const totalTasks = syncTasks.length;
+      const syncedTasks = syncTasks.filter(t => t.jira_issue_key).length;
+      const syncPercentage = totalTasks > 0 ? (syncedTasks / totalTasks) * 100 : 0;
+      
+      // Mock recent sync activity (in real app, this would come from a sync log table)
+      const lastSyncTime = new Date(Date.now() - Math.random() * 24 * 60 * 60 * 1000);
+      const syncHealth = syncPercentage > 80 ? 'healthy' : syncPercentage > 50 ? 'warning' : 'error';
+      
+      res.json({ 
+        success: true, 
+        data: { 
+          syncPercentage, 
+          totalTasks, 
+          syncedTasks, 
+          lastSyncTime, 
+          syncHealth,
+          recentErrors: [] // Would be populated from sync error logs
+        }
+      });
+    } catch (error) {
+      console.error('Jira sync health error:', error);
+      res.status(500).json({ success: false, error: 'Failed to fetch Jira sync health' });
+    }
+  });
+
+  // 7. Budget Summary - Burn rate and runway
+  app.get("/api/budget/summary", verifyToken, async (req, res) => {
+    try {
+      const { projectId } = req.query;
+      
+      // Get project budget (would be from a budget table in real app)
+      const project = await db.select().from(projects).where(eq(projects.id, projectId as string)).limit(1);
+      if (!project.length) {
+        return res.status(404).json({ success: false, error: 'Project not found' });
+      }
+      
+      // Mock budget data (in real app, this would come from budget/expense tracking)
+      const totalBudget = 500000; // $500k
+      const spentToDate = Math.floor(Math.random() * 300000); // Random spent amount
+      const burnRate = 50000; // $50k per month
+      const remaining = totalBudget - spentToDate;
+      const runwayMonths = remaining > 0 ? Math.floor(remaining / burnRate) : 0;
+      
+      const budgetHealth = remaining > totalBudget * 0.3 ? 'healthy' : remaining > totalBudget * 0.1 ? 'warning' : 'critical';
+      
+      // Category breakdown (mock data)
+      const categoryAllocation = [
+        { category: 'Personnel', amount: spentToDate * 0.6, percentage: 60 },
+        { category: 'Infrastructure', amount: spentToDate * 0.2, percentage: 20 },
+        { category: 'External Services', amount: spentToDate * 0.15, percentage: 15 },
+        { category: 'Other', amount: spentToDate * 0.05, percentage: 5 }
+      ];
+      
+      res.json({ 
+        success: true, 
+        data: { 
+          totalBudget, 
+          spentToDate, 
+          remaining, 
+          burnRate, 
+          runwayMonths, 
+          budgetHealth,
+          spentPercentage: (spentToDate / totalBudget) * 100,
+          categoryAllocation
+        }
+      });
+    } catch (error) {
+      console.error('Budget summary error:', error);
+      res.status(500).json({ success: false, error: 'Failed to fetch budget summary' });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
