@@ -13,7 +13,7 @@ import { JiraService, defaultJiraFieldMapping } from "./services/jiraService";
 import { insertMigrationJobSchema, projects, insertProjectSchema, budgetTypeConfig, projectBudgets, budgetCategories, budgetSpending, budgetReceipts, insertBudgetCategorySchema, insertBudgetSpendingSchema, tasks, milestones, stakeholders, riskRegister, projectDiscussions, discussionActionItems, discussionChangeLog, projectMembers, taskBacklog, teams, teamMembers, teamCapacityIterations, teamCapacityMembers, iterationWeeks, weeklyAvailability, insertTaskSchema, insertMilestoneSchema, insertStakeholderSchema, insertRiskSchema, insertProjectDiscussionSchema, insertDiscussionActionItemSchema, insertProjectMemberSchema, insertTaskBacklogSchema, insertTeamSchema, insertTeamMemberSchema, insertTeamCapacityIterationSchema, insertTeamCapacityMemberSchema, insertIterationWeekSchema, insertWeeklyAvailabilitySchema, users, retrospectives, retrospectiveColumns, retrospectiveCards, retrospectiveActionItems, retrospectiveCardVotes, insertRetrospectiveSchema, insertRetrospectiveColumnSchema, insertRetrospectiveCardSchema, insertRetrospectiveActionItemSchema, jiraIntegrations, jiraSyncHistory, insertJiraIntegrationSchema, insertJiraSyncHistorySchema } from "@shared/schema";
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { eq, and, exists, or, isNull, desc, gte, lte, sum, count, isNotNull, inArray, like } from 'drizzle-orm';
+import { eq, and, exists, or, isNull, desc, gte, lte, sum, count, isNotNull, inArray, like, sql } from 'drizzle-orm';
 import { db } from './db';
 
 const upload = multer({ 
@@ -44,13 +44,16 @@ const getResourceUtilization = async (userId: string) => {
   const resourceQuery = await db
     .select({
       user_id: teamMembers.user_id,
-      total_tasks: count(tasks.id),
-      completed_tasks: sum(tasks.id).where(eq(tasks.status, 'completed')),
-      in_progress_tasks: sum(tasks.id).where(eq(tasks.status, 'in_progress'))
+      total_tasks: sql<number>`COUNT(DISTINCT ${tasks.id})`,
+      completed_tasks: sql<number>`COALESCE(COUNT(DISTINCT CASE WHEN ${tasks.status} = 'completed' THEN ${tasks.id} END), 0)`,
+      in_progress_tasks: sql<number>`COALESCE(COUNT(DISTINCT CASE WHEN ${tasks.status} = 'in_progress' THEN ${tasks.id} END), 0)`
     })
     .from(teamMembers)
     .leftJoin(teams, eq(teams.id, teamMembers.team_id))
-    .leftJoin(tasks, eq(tasks.owner_id, teamMembers.user_id))
+    .leftJoin(tasks, and(
+      eq(tasks.owner_id, teamMembers.user_id),
+      eq(tasks.project_id, teams.project_id)
+    ))
     .innerJoin(projectMembers, eq(projectMembers.project_id, teams.project_id))
     .where(eq(projectMembers.user_id, userId))
     .groupBy(teamMembers.user_id);
@@ -86,10 +89,10 @@ async function verifyToken(req: any, res: any, next: any) {
     const token = authHeader.substring(7);
     
     try {
-      if (!process.env.JWT_SECRET) {
-        throw new Error('JWT_SECRET environment variable is required');
-      }
-      const decoded = jwt.verify(token, process.env.JWT_SECRET) as any;
+      const secret = process.env.JWT_SECRET || (process.env.NODE_ENV === 'production' ? 
+        (() => { throw new Error('JWT_SECRET is required in production'); })() : 
+        'dev_jwt_secret');
+      const decoded = jwt.verify(token, secret) as any;
       
       // Fetch user from database to ensure they still exist
       const user = await db.select().from(users).where(eq(users.id, decoded.userId)).limit(1);
@@ -708,7 +711,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Analytics service - Project overview
-  app.get("/api/analytics-service/projects/:projectId/project-overview", async (req, res) => {
+  app.get("/api/analytics-service/projects/:projectId/project-overview", verifyToken, async (req, res) => {
     try {
       const { projectId } = req.params;
       
@@ -4586,7 +4589,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Resource Summary Analytics
+  // Resource Summary Analytics  
   app.get("/api/analytics/resources/summary", verifyToken, async (req, res) => {
     try {
       const userId = (req as any).user.id;
@@ -4609,11 +4612,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const resourceTasks = await db
         .select({
           user_id: tasks.owner_id,
-          task_count: count()
+          task_count: sql<number>`COUNT(DISTINCT ${tasks.id})`
         })
         .from(tasks)
         .innerJoin(projectMembers, eq(projectMembers.project_id, tasks.project_id))
-        .where(eq(projectMembers.user_id, userId))
+        .where(and(
+          eq(projectMembers.user_id, userId),
+          isNotNull(tasks.owner_id)
+        ))
         .groupBy(tasks.owner_id);
       
       const assignedResources = resourceTasks.filter(r => (r.task_count || 0) > 0).length;
