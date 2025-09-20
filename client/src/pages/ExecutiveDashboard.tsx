@@ -703,7 +703,7 @@ const ExecutiveDashboard = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {/* Show all tasks, not just overdue */}
+                    {/* Show sample tasks for demonstration - in production, would fetch full task list */}
                     {allTasks?.slice(0, 10).map((task: any, index: number) => (
                       <TableRow key={task.id || index}>
                         <TableCell>
