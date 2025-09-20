@@ -1,6 +1,6 @@
 # Project Management Backend
 
-A Node.js/Express backend that mirrors all Supabase edge functions for the project management application..
+A Node.js/Express backend that mirrors all Supabase edge functions for the project management application.
 
 ## Features
 
