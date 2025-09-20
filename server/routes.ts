@@ -818,8 +818,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
           totalRisks,
           highRisks,
           mitigatedRisks,
-          riskHeatmap: [],
+          risks: riskData.map(risk => ({
+            id: risk.id,
+            title: risk.title,
+            category: risk.category,
+            probability: risk.likelihood,
+            impact: risk.impact,
+            status: risk.status,
+            mitigation_plan: risk.mitigation_strategy
+          })),
+          riskHeatmap: riskData.length > 0 ? riskData.map(risk => ({
+            name: risk.title,
+            value: (risk.likelihood || 0) * (risk.impact || 0),
+            probability: risk.likelihood,
+            impact: risk.impact
+          })) : [],
           risksByCategory: []
+        },
+        milestoneAnalytics: {
+          totalMilestones,
+          completedMilestones,
+          milestones: projectMilestones.map(milestone => {
+            const milestoneTasks = projectTasks.filter(task => task.milestone_id === milestone.id);
+            return {
+              id: milestone.id,
+              title: milestone.title,
+              due_date: milestone.due_date,
+              status: milestone.status,
+              tasks: milestoneTasks.map(task => ({
+                id: task.id,
+                title: task.title,
+                status: task.status
+              }))
+            };
+          })
         },
         stakeholderEngagement: {
           totalStakeholders,
