@@ -279,11 +279,13 @@ const ExecutiveDashboard = () => {
     color: status.color
   })) || [];
 
-  // Effort by Project data for treemap
-  const effortByProjectData = tasksByOwnerData.map((owner: any) => ({
+  // Effort by Project data for treemap with distinct colors
+  const colors = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4', '#84cc16', '#f97316'];
+  const effortByProjectData = tasksByOwnerData.map((owner: any, index: number) => ({
     name: owner.owner,
     value: owner.total * 8, // Assuming 8 hours per task
-    size: owner.total
+    size: owner.total,
+    fill: colors[index % colors.length]
   }));
 
   // Risk data from real analytics (if available)
@@ -471,8 +473,11 @@ const ExecutiveDashboard = () => {
                       data={effortByProjectData}
                       dataKey="value"
                       stroke="#fff"
-                      fill="#3b82f6"
-                    />
+                    >
+                      {effortByProjectData.map((entry: any, index: number) => (
+                        <Cell key={`cell-${index}`} fill={entry.fill} />
+                      ))}
+                    </Treemap>
                   </ResponsiveContainer>
                 ) : (
                   <div className="flex items-center justify-center h-[300px] text-muted-foreground">
