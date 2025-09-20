@@ -1,0 +1,99 @@
+I can see the new dashboard, but the 'Overdue Tasks' count is showing as 0. Please make the following updates:
+
+Use real project data only — avoid dummy data.
+
+Add missing visualizations:
+
+Tasks by Owner
+
+Risk Heatmap
+
+Refer to the attached screenshot and implement all possible widgets based on the information available in our system.
+
+If any data points required for these visualizations are not available in our system, let me know what’s missing so we can plan to capture it and make this dashboard fully functional."
+
+📊 Functionalities in the Dashboard (from the screenshot you shared)
+
+Here’s what the existing dashboard provides:
+
+Top KPIs (Tiles at the top)
+
+Total Projects (20)
+
+Total Tasks (269)
+
+Completed Tasks (79)
+
+Future Tasks (125)
+
+On Track Tasks (18)
+
+Late Tasks (2)
+
+Overdue Tasks (45)
+
+Total Effort Hours (18K)
+
+Effort Completed (6,596)
+
+Effort Remaining (11K)
+
+Charts & Visuals
+
+Tasks by Status (Donut chart) → shows tasks split into Overdue, Late, On Track, Future, Completed.
+
+Tasks by Project > Bucket (Pie chart) → distribution of tasks across different projects/buckets.
+
+Effort (Hours) by Project > Bucket (Treemap) → visual representation of hours spent and remaining per project/bucket.
+
+Detailed Task Table (Grid at the bottom)
+
+KPI/Status indicator (red diamonds for overdue)
+
+Task Name
+
+Project Name
+
+Task Link
+
+Start & Finish Dates
+
+Progress (%)
+
+Effort (Total Hours, Completed Hours, Remaining Hours)
+
+Totals row at the bottom
+
+Navigation Tabs (bottom of screenshot)
+
+Portfolio Dashboard
+
+Portfolio Timeline
+
+Portfolio Milestones
+
+Resource Dashboard
+
+Resource Assignments
+
+Task Overview (current tab)
+
+Project Timeline
+
+My Work
+
+My Timeline
+
+🚀 Suggested Additions (based on your note & industry best practices)
+
+Tasks by Owner (Bar chart or table to show accountability).
+
+Risk Heatmap (Visualize risks by probability × impact).
+
+Overdue Task Alerts (auto-email reminders — links with your earlier request).
+
+Project Manager filter (already present but can be expanded for owner-level).
+
+Effort Forecast vs Actual (compare planned vs actual hours).
+
+Drill-down on KPI tiles (click "Overdue Tasks" to list them directly).
