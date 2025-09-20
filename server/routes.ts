@@ -1086,17 +1086,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const stakeholderId = req.params.stakeholderId;
       
+      console.log('Stakeholder update request body:', req.body);
+      
       // Filter out undefined values and only include fields that are provided
       const updateData: any = {
         updated_at: new Date().toISOString()
       };
       
-      if (req.body.name !== undefined) updateData.name = req.body.name;
-      if (req.body.email !== undefined) updateData.email = req.body.email;
-      if (req.body.department !== undefined) updateData.department = req.body.department;
-      if (req.body.raci !== undefined) updateData.raci = req.body.raci;
-      if (req.body.influence_level !== undefined) updateData.influence_level = req.body.influence_level;
-      if (req.body.notes !== undefined) updateData.notes = req.body.notes;
+      if (req.body.name !== undefined && req.body.name !== '') updateData.name = req.body.name;
+      if (req.body.email !== undefined && req.body.email !== '') updateData.email = req.body.email;
+      if (req.body.department !== undefined && req.body.department !== '') updateData.department = req.body.department;
+      if (req.body.raci !== undefined && req.body.raci !== '') updateData.raci = req.body.raci;
+      if (req.body.influence_level !== undefined && req.body.influence_level !== '') updateData.influence_level = req.body.influence_level;
+      if (req.body.notes !== undefined && req.body.notes !== '') updateData.notes = req.body.notes;
+      
+      console.log('Update data:', updateData);
       
       const updatedStakeholder = await db.update(stakeholders)
         .set(updateData)

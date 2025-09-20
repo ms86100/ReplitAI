@@ -238,7 +238,7 @@ export function StakeholdersView({ projectId }: StakeholdersViewProps) {
             </DialogTrigger>
             <DialogContent className="sm:max-w-[500px]" aria-describedby="add-stakeholder-description">
               <DialogHeader>
-                <DialogTitle>Add New Stakeholder</DialogTitle>
+                <DialogTitle>{editingStakeholder ? 'Edit Stakeholder' : 'Add New Stakeholder'}</DialogTitle>
               </DialogHeader>
               <div id="add-stakeholder-description" className="sr-only">
                 Add a new stakeholder to the project with their role and contact information
@@ -324,7 +324,7 @@ export function StakeholdersView({ projectId }: StakeholdersViewProps) {
                     Cancel
                   </Button>
                   <Button type="submit">
-                    Add Stakeholder
+                    {editingStakeholder ? 'Update Stakeholder' : 'Add Stakeholder'}
                   </Button>
                 </div>
               </form>
