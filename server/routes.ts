@@ -675,24 +675,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
       const overdueTasks = overdueTasksData.length;
       const avgCompletionTime = totalTasks > 0 ? 5.2 : 0; // Can be calculated from actual data later
-      
-      // Create overdue tasks list with detailed information
-      const overdueTasksList = overdueTasksData.map(task => {
-        const dueDate = new Date(task.due_date!);
-        const today = new Date();
-        const daysOverdue = Math.floor((today.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
-        
-        // Find task owner name
-        const owner = stakeholderData.find(s => s.id === task.owner_id);
-        
-        return {
-          id: task.id,
-          title: task.title,
-          owner: owner?.name || 'Unassigned',
-          dueDate: dueDate.toISOString().split('T')[0], // Format as YYYY-MM-DD
-          daysOverdue
-        };
-      });
 
       // Milestone analytics  
       const projectMilestones = await db.select().from(milestones).where(eq(milestones.project_id, projectId));
@@ -727,6 +709,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Stakeholder analytics  
       const stakeholderData = await db.select().from(stakeholders).where(eq(stakeholders.project_id, projectId));
       const totalStakeholders = stakeholderData.length;
+      
+      // Create overdue tasks list with detailed information (after stakeholder data is fetched)
+      const overdueTasksList = overdueTasksData.map(task => {
+        const dueDate = new Date(task.due_date!);
+        const today = new Date();
+        const daysOverdue = Math.floor((today.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
+        
+        // Find task owner name
+        const owner = stakeholderData.find(s => s.id === task.owner_id);
+        
+        return {
+          id: task.id,
+          title: task.title,
+          owner: owner?.name || 'Unassigned',
+          dueDate: dueDate.toISOString().split('T')[0], // Format as YYYY-MM-DD
+          daysOverdue
+        };
+      });
 
       // Project health calculation
       const budgetHealth = totalAllocated > 0 ? Math.max(0, 100 - (totalSpent / totalAllocated * 100)) : 100;
