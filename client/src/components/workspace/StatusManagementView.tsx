@@ -13,6 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { SimpleSelect, SimpleSelectItem } from '@/components/ui/simple-select';
 import { AddTaskDialog } from '@/components/workspace/AddTaskDialog';
 import { AddTaskFromBacklogDialog } from '@/components/workspace/AddTaskFromBacklogDialog';
+import { MilestoneManagementDialog } from '@/components/workspace/MilestoneManagementDialog';
 import { useToast } from '@/hooks/use-toast';
 import { apiClient } from '@/services/api';
 import { format } from 'date-fns';
@@ -539,9 +540,21 @@ export function StatusManagementView({ projectId }: StatusManagementViewProps) {
   return (
     <div className="space-y-6 p-6">
       {/* Header */}
-      <div>
-        <h2 className="text-2xl font-semibold">Tasks & Milestones</h2>
-        <p className="text-muted-foreground">Manage project tasks organized by milestones</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-semibold">Tasks & Milestones</h2>
+          <p className="text-muted-foreground">Manage project tasks organized by milestones</p>
+        </div>
+        <MilestoneManagementDialog
+          projectId={projectId}
+          onMilestoneChange={fetchData}
+          triggerButton={
+            <Button data-testid="button-add-milestone">
+              <Plus className="h-4 w-4 mr-2" />
+              Add Milestone
+            </Button>
+          }
+        />
       </div>
 
       {/* Statistics Cards */}
