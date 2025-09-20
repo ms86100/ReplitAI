@@ -4,13 +4,31 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { apiClient } from '@/services/api';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  ResponsiveContainer,
+  PieChart as RechartsPieChart,
+  Pie,
+  Cell,
+  Tooltip,
+  Legend,
+  RadarChart,
+  Radar,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis
+} from 'recharts';
 import {
   BarChart3,
   AlertTriangle,
   DollarSign,
   CheckCircle,
   Clock,
-  Target
+  Target,
+  PieChart,
+  User,
+  Shield,
+  Send
 } from 'lucide-react';
 
 interface ProjectAnalyticsDashboardProps {
@@ -65,6 +83,7 @@ const ProjectCompletionGauge: React.FC<ProjectCompletionGaugeProps> = ({ totalTa
 const ProjectAnalyticsDashboard: React.FC<ProjectAnalyticsDashboardProps> = ({ projectId }) => {
   const [analyticsData, setAnalyticsData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [sendingReminder, setSendingReminder] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -114,6 +133,42 @@ const ProjectAnalyticsDashboard: React.FC<ProjectAnalyticsDashboardProps> = ({ p
   }
 
   const { projectHealth, budgetAnalytics, taskAnalytics } = analyticsData;
+
+  const handleSendReminder = async (taskId: string, taskTitle: string, taskOwner: string) => {
+    if (taskOwner === 'Unassigned') {
+      toast({
+        title: "Cannot Send Reminder",
+        description: "This task is not assigned to anyone.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSendingReminder(taskId);
+    try {
+      const response = await apiClient.sendTaskReminder(projectId, taskId);
+      if (response.success) {
+        toast({
+          title: "Reminder Sent",
+          description: `Overdue task reminder sent to ${taskOwner} for "${taskTitle}".`,
+        });
+      } else {
+        throw new Error(response.error || 'Failed to send reminder');
+      }
+    } catch (error) {
+      console.error('Error sending reminder:', error);
+      toast({
+        title: "Error",
+        description: "Failed to send reminder. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setSendingReminder(null);
+    }
+  };
+
+  // Get overdue tasks with details
+  const overdueTasksWithDetails = taskAnalytics.overdueTasksList || [];
 
   return (
     <div className="space-y-6">
@@ -184,8 +239,46 @@ const ProjectAnalyticsDashboard: React.FC<ProjectAnalyticsDashboardProps> = ({ p
         </Card>
       </div>
 
-      {/* Budget Overview with Completion Gauge - All other analytics sections removed */}
-      <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
+      {/* Main Analytics Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Task Status Distribution */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <PieChart className="h-5 w-5" />
+              Task Status Distribution
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              {taskAnalytics.tasksByStatus?.length > 0 && taskAnalytics.tasksByStatus.some(item => item.count > 0) ? (
+                <RechartsPieChart>
+                  <Pie
+                    data={taskAnalytics.tasksByStatus.filter(item => item.count > 0)}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ status, count }) => `${status}: ${count}`}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="count"
+                  >
+                    {taskAnalytics.tasksByStatus.filter(item => item.count > 0).map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value, name) => [value, 'Tasks']} />
+                  <Legend formatter={(value, entry: any) => `${entry.payload?.status || value} (${entry.payload?.count || 0})`} />
+                </RechartsPieChart>
+              ) : (
+                <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                  No task status data available
+                </div>
+              )}
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
         {/* Budget Overview with Completion Gauge */}
         <Card>
           <CardHeader>
@@ -230,8 +323,152 @@ const ProjectAnalyticsDashboard: React.FC<ProjectAnalyticsDashboardProps> = ({ p
           </CardContent>
         </Card>
       </div>
-      
-      {/* All detailed analytics sections removed as requested */}
+
+      {/* Tasks by Owner & Overdue Tasks */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Tasks by Owner */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <User className="h-5 w-5" />
+              Tasks by Owner
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {taskAnalytics.tasksByOwner?.length > 0 ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Owner</TableHead>
+                    <TableHead>Total</TableHead>
+                    <TableHead>Completed</TableHead>
+                    <TableHead>In Progress</TableHead>
+                    <TableHead>Blocked</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {taskAnalytics.tasksByOwner.map((owner, index) => (
+                    <TableRow key={index}>
+                      <TableCell className="font-medium">{owner.owner}</TableCell>
+                      <TableCell>{owner.total}</TableCell>
+                      <TableCell>
+                        <Badge variant="default" className="bg-emerald-100 text-emerald-800">
+                          {owner.completed}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="default" className="bg-blue-100 text-blue-800">
+                          {owner.inProgress}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="default" className="bg-red-100 text-red-800">
+                          {owner.blocked}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : (
+              <div className="h-[200px] flex items-center justify-center text-muted-foreground">
+                No task ownership data available
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Overdue Tasks */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Clock className="h-5 w-5" />
+              Overdue Tasks
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {overdueTasksWithDetails?.length > 0 ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Task</TableHead>
+                    <TableHead>Owner</TableHead>
+                    <TableHead>Days Overdue</TableHead>
+                    <TableHead>Action</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {overdueTasksWithDetails.map((task) => (
+                    <TableRow key={task.id}>
+                      <TableCell className="font-medium">{task.title}</TableCell>
+                      <TableCell>{task.owner}</TableCell>
+                      <TableCell>
+                        <Badge variant="destructive" className="text-xs">
+                          {task.daysOverdue} days
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleSendReminder(task.id, task.title, task.owner)}
+                          disabled={sendingReminder === task.id || task.owner === 'Unassigned'}
+                          className="flex items-center gap-2"
+                          data-testid={`button-send-reminder-${task.id}`}
+                        >
+                          {sendingReminder === task.id ? (
+                            <>
+                              <div className="w-4 h-4 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin" />
+                              Sending...
+                            </>
+                          ) : (
+                            <>
+                              <Send className="h-4 w-4" />
+                              Send Reminder
+                            </>
+                          )}
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : (
+              <div className="h-[200px] flex items-center justify-center text-muted-foreground">
+                No overdue tasks
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Project Health Overview */}
+      <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Target className="h-5 w-5" />
+              Project Health Overview
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <RadarChart data={[
+                { subject: 'Budget', A: projectHealth.budget, fullMark: 100 },
+                { subject: 'Timeline', A: projectHealth.timeline, fullMark: 100 },
+                { subject: 'Team', A: projectHealth.team, fullMark: 100 },
+                { subject: 'Risks', A: projectHealth.risks, fullMark: 100 },
+                { subject: 'Quality', A: 85, fullMark: 100 }
+              ]}>
+                <PolarGrid />
+                <PolarAngleAxis dataKey="subject" />
+                <PolarRadiusAxis angle={90} domain={[0, 100]} />
+                <Radar name="Health Score" dataKey="A" stroke="#475569" fill="#475569" fillOpacity={0.3} />
+              </RadarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 };
