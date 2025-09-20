@@ -448,10 +448,10 @@ const ExecutiveDashboard = () => {
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
                   <BarChart data={[
-                    { priority: 'Critical', count: (allTasksData?.data || allTasks).filter((t: any) => t.priority === 'critical').length, fill: '#ef4444' },
-                    { priority: 'High', count: (allTasksData?.data || allTasks).filter((t: any) => t.priority === 'high').length, fill: '#f97316' },
-                    { priority: 'Medium', count: (allTasksData?.data || allTasks).filter((t: any) => t.priority === 'medium').length, fill: '#eab308' },
-                    { priority: 'Low', count: (allTasksData?.data || allTasks).filter((t: any) => t.priority === 'low').length, fill: '#22c55e' }
+                    { priority: 'Critical', count: ((allTasksData as any)?.data || allTasks).filter((t: any) => t.priority === 'critical').length, fill: '#ef4444' },
+                    { priority: 'High', count: ((allTasksData as any)?.data || allTasks).filter((t: any) => t.priority === 'high').length, fill: '#f97316' },
+                    { priority: 'Medium', count: ((allTasksData as any)?.data || allTasks).filter((t: any) => t.priority === 'medium').length, fill: '#eab308' },
+                    { priority: 'Low', count: ((allTasksData as any)?.data || allTasks).filter((t: any) => t.priority === 'low').length, fill: '#22c55e' }
                   ]}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="priority" />
@@ -714,7 +714,7 @@ const ExecutiveDashboard = () => {
                   </TableHeader>
                   <TableBody>
                     {/* Show all project tasks */}
-                    {(allTasksData?.data || allTasks)?.slice(0, 10).map((task: any, index: number) => (
+                    {((allTasksData as any)?.data || allTasks)?.slice(0, 10).map((task: any, index: number) => (
                       <TableRow key={task.id || index}>
                         <TableCell>
                           <div className={`w-3 h-3 rotate-45 ${
